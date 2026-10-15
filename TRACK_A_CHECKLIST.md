@@ -1,6 +1,7 @@
 # SentinelVision — Track A Acceptance & Verification Checklist
 ### CraftifAI Physical AI Hackathon — Track A: PipeGen Submission
-**Project:** SentinelVision (`https://github.com/ASstyles/SentinelVision`)  
+**Project:** SentinelVision (`https://github.com/ASstyles/CraftifAIHackathon_CRA003`)  
+**Participant ID:** CRA003  
 **Target Hardware:** NVIDIA GeForce RTX 2050 Laptop GPU (4 GB VRAM)  
 **Host Environment:** Windows 11 + WSL2 Ubuntu 24.04 LTS  
 **Audit Timestamp:** 2026-10-15  
@@ -25,7 +26,7 @@
 | **12** | **Automated Tests & Frontend Build Executed** | **VERIFIED** | [`tests/`](tests/) (22 automated tests)<br>[`frontend/`](frontend/) (Vite + TypeScript) | 22/22 pytest tests pass (100% pass rate covering geometry, suppression, dwell time, schema, and API). Frontend production build (`npm run build`) builds cleanly in 1.26s. |
 | **13** | **README Reconciled with Implementation** | **VERIFIED** | [`README.md`](README.md) | README accurately specifies all working commands, API endpoints, architecture, hardware constraints, empirical performance figures, and operational modes without unsupported claims. |
 | **14** | **Repository Security & Hygiene Reviewed** | **VERIFIED** | [`.gitignore`](.gitignore)<br>`/etc/sudoers.d/` audit | Zero hardcoded passwords, tokens, or API keys. Confirmed no passwordless sudo exception exists. Gitignore properly excludes local cache, virtualenvs, `.plan`, and binary packages. |
-| **15** | **GitHub Repository Release Confirmed** | **VERIFIED** | [`https://github.com/ASstyles/SentinelVision`](https://github.com/ASstyles/SentinelVision) | Synchronized to `origin/main` with clear, descriptive commit message and reproducible instructions. |
+| **15** | **GitHub Repository Release Confirmed** | **VERIFIED** | [`https://github.com/ASstyles/CraftifAIHackathon_CRA003`](https://github.com/ASstyles/CraftifAIHackathon_CRA003) | Synchronized to `origin/main` with clear, descriptive commit message and reproducible instructions. |
 
 ---
 
