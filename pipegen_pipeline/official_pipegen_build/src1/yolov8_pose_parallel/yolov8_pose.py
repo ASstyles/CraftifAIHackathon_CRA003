@@ -134,6 +134,9 @@ def parse_args():
     p.add_argument("--conf", type=float, default=0.4, help="YOLOv8 person confidence")
     p.add_argument("--pose-conf", type=float, default=0.25, help="pose person confidence")
     p.add_argument("--output", default=None, help="write annotated video here")
+    p.add_argument("--runtime", default="tensorrt_required",
+                   choices=["tensorrt_required", "onnx_cuda_allowed", "onnx_cpu_allowed"],
+                   help="runtime backend requirement: tensorrt_required, onnx_cuda_allowed, or onnx_cpu_allowed")
     p.add_argument("--no-show", action="store_true", help="disable display window")
     p.add_argument("--api-ingest", default=None,
                    help="URL to post frame detections to (e.g. http://localhost:8000/api/pipegen/ingest)")
@@ -151,10 +154,11 @@ def main():
     print(f"  Target Video Source : {args.input}")
     print(f"  YOLOv8 Model Target : {args.yolo_model}")
     print(f"  Pose Model Target   : {args.pose_model}")
+    print(f"  Runtime Mode Policy : {args.runtime}")
 
-    # Initialize detectors (TensorRT GPU if .plan available, else ONNX)
-    yolo = create_yolo_detector(args.yolo_model, conf=args.conf)
-    pose = create_pose_estimator(args.pose_model, conf=args.pose_conf)
+    # Initialize detectors with strict runtime policy
+    yolo = create_yolo_detector(args.yolo_model, conf=args.conf, runtime_mode=args.runtime)
+    pose = create_pose_estimator(args.pose_model, conf=args.pose_conf, runtime_mode=args.runtime)
 
     # Initialize persistent spatial tracker
     tracker = SpatialTracker(max_age=15, iou_threshold=0.3)
@@ -189,10 +193,12 @@ def main():
 
             t0 = time.time()
 
-            # Execute dual models in parallel
+            # Execute dual models in parallel with precise inference timing
+            t_infer_start = time.perf_counter()
             f_yolo = pool.submit(yolo.infer, frame)
             f_pose = pool.submit(pose.infer, frame)
             yolo_res, pose_res = f_yolo.result(), f_pose.result()
+            infer_ms = (time.perf_counter() - t_infer_start) * 1000.0
 
             # Filter persons (class_id 0) and update persistent tracker
             person_dets = [d for d in yolo_res if d[2] == 0]
@@ -257,7 +263,9 @@ def main():
                     payload = json.dumps({
                         "frame_num": frame_idx,
                         "source_id": 0,
-                        "objects": objects
+                        "objects": objects,
+                        "inference_backend": getattr(yolo, "backend_name", "Unknown"),
+                        "inference_latency_ms": round(infer_ms, 2)
                     }).encode("utf-8")
                     req = urllib.request.Request(args.api_ingest, data=payload, headers={"Content-Type": "application/json"})
                     urllib.request.urlopen(req, timeout=0.2)
@@ -293,6 +301,16 @@ def main():
             writer.release()
         if not args.no_show:
             cv2.destroyAllWindows()
+        if hasattr(yolo, "close"):
+            try:
+                yolo.close()
+            except Exception:
+                pass
+        if hasattr(pose, "close"):
+            try:
+                pose.close()
+            except Exception:
+                pass
         print(f"Pipeline execution finished. Processed {frame_idx} frames.")
 
 

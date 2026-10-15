@@ -30,8 +30,8 @@ export interface GpuStatus {
   memory_total_mb: number;
   memory_used_mb: number;
   memory_free_mb: number;
-  temperature_c: number;
-  utilization_pct: number;
+  temperature_c: number | null;
+  utilization_pct: number | null;
   available: boolean;
 }
 
@@ -50,8 +50,15 @@ export interface PipelineStatus {
   tensorrt_engine: string;
   pose_engine?: string;
   target_hardware: string;
-  current_fps: number;
-  inference_latency_ms: number;
+  target_fps?: number;
+  target_latency_ms?: number;
+  current_fps: number | null;
+  inference_latency_ms: number | null;
+  pipeline_latency_ms?: number | null;
+  ingest_latency_ms?: number | null;
+  metrics_source?: string;
+  inference_backend?: string;
+  is_stale?: boolean;
   total_frames_processed: number;
   total_detections: number;
   total_incidents: number;
@@ -61,14 +68,19 @@ export interface PipelineStatus {
 }
 
 export interface PerformanceMetrics {
-  fps: number;
-  inference_latency_ms: number;
-  pipeline_latency_ms: number;
+  fps: number | null;
+  inference_latency_ms: number | null;
+  pipeline_latency_ms: number | null;
+  ingest_latency_ms?: number | null;
   target_fps: number;
-  gpu_temperature_c: number;
-  gpu_memory_used_mb: number;
-  gpu_memory_total_mb: number;
-  gpu_utilization_pct: number;
+  target_latency_ms?: number;
+  is_stale?: boolean;
+  metrics_source?: string;
+  inference_backend?: string;
+  gpu_temperature_c: number | null;
+  gpu_memory_used_mb: number | null;
+  gpu_memory_total_mb: number | null;
+  gpu_utilization_pct: number | null;
   total_frames_processed: number;
   mode: string;
 }

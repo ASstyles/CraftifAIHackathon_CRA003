@@ -13,13 +13,18 @@ export const PerformanceGauges: React.FC<PerformanceGaugesProps> = ({
   totalIncidents,
   activeIntrusions
 }) => {
-  const fps = metrics?.fps ?? 30.0;
-  const vramUsed = metrics?.gpu_memory_used_mb ?? 0.0;
+  const fps = metrics?.fps ?? null;
+  const inferenceLatency = metrics?.inference_latency_ms ?? null;
+  const ingestLatency = metrics?.ingest_latency_ms ?? null;
+  const vramUsed = metrics?.gpu_memory_used_mb ?? null;
   const vramTotal = metrics?.gpu_memory_total_mb ?? 4096.0;
-  const gpuTemp = metrics?.gpu_temperature_c ?? 57.0;
-  const gpuUtil = metrics?.gpu_utilization_pct ?? 0.0;
+  const gpuTemp = metrics?.gpu_temperature_c ?? null;
+  const gpuUtil = metrics?.gpu_utilization_pct ?? null;
+  const isStale = metrics?.is_stale ?? false;
+  const isDemo = metrics?.mode === 'demo';
+  const backend = metrics?.inference_backend ?? (isDemo ? 'DEMO_SYNTHETIC' : 'UNINITIALIZED');
 
-  const vramPercent = Math.min(100, Math.round((vramUsed / vramTotal) * 100));
+  const vramPercent = vramUsed !== null ? Math.min(100, Math.round((vramUsed / vramTotal) * 100)) : 0;
 
   return (
     <div style={{
@@ -30,36 +35,48 @@ export const PerformanceGauges: React.FC<PerformanceGaugesProps> = ({
     }}>
 
       {/* 1. FPS Throughput Gauge */}
-      <div className="glass-panel" style={{ padding: '16px' }}>
+      <div className="glass-panel" style={{ padding: '16px', position: 'relative' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 500 }}>Throughput</span>
+          <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 500 }}>Throughput (Rolling)</span>
           <Zap size={16} color="#06b6d4" />
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-          <span className="font-mono" style={{ fontSize: '1.8rem', fontWeight: 700, color: '#38bdf8' }}>
-            {fps.toFixed(1)}
+          <span className="font-mono" style={{ fontSize: '1.8rem', fontWeight: 700, color: fps !== null ? '#38bdf8' : '#64748b' }}>
+            {fps !== null ? fps.toFixed(1) : 'N/A'}
           </span>
           <span style={{ fontSize: '0.85rem', color: '#64748b' }}>FPS</span>
         </div>
-        <div style={{ marginTop: '8px', fontSize: '0.72rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span>● Locked 30 FPS DeepStream sync</span>
+        <div style={{ marginTop: '8px', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          {isDemo ? (
+            <span style={{ color: '#f59e0b' }}>● Synthetic Demo Fixture</span>
+          ) : isStale ? (
+            <span style={{ color: '#ef4444' }}>● Stale / Idle (&gt;5s)</span>
+          ) : fps !== null ? (
+            <span style={{ color: '#10b981' }}>● Measured Rolling ({metrics?.metrics_source || 'live'})</span>
+          ) : (
+            <span style={{ color: '#64748b' }}>● Awaiting frame ingestion</span>
+          )}
         </div>
       </div>
 
-      {/* 2. Latency Gauge */}
+      {/* 2. Measured Inference Latency Gauge */}
       <div className="glass-panel" style={{ padding: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 500 }}>Safety Logic Latency</span>
+          <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 500 }}>Inference Latency</span>
           <Clock size={16} color="#a855f7" />
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-          <span className="font-mono" style={{ fontSize: '1.8rem', fontWeight: 700, color: '#c084fc' }}>
-            0.12
+          <span className="font-mono" style={{ fontSize: '1.8rem', fontWeight: 700, color: inferenceLatency !== null ? '#c084fc' : '#64748b' }}>
+            {inferenceLatency !== null ? inferenceLatency.toFixed(1) : 'N/A'}
           </span>
           <span style={{ fontSize: '0.85rem', color: '#64748b' }}>ms</span>
         </div>
         <div style={{ marginTop: '8px', fontSize: '0.72rem', color: '#94a3b8' }}>
-          TensorRT Target: <strong className="font-mono">14.2 ms</strong> (YOLOv8s FP16)
+          {ingestLatency !== null ? (
+            <span>Ingest: <strong className="font-mono">{ingestLatency.toFixed(2)} ms</strong> | Target: 14.2 ms</span>
+          ) : (
+            <span>Target: <strong className="font-mono">14.2 ms</strong> (RTX 2050 TRT)</span>
+          )}
         </div>
       </div>
 
@@ -70,8 +87,8 @@ export const PerformanceGauges: React.FC<PerformanceGaugesProps> = ({
           <HardDrive size={16} color="#10b981" />
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-          <span className="font-mono" style={{ fontSize: '1.8rem', fontWeight: 700, color: '#34d399' }}>
-            {Math.round(vramUsed)}
+          <span className="font-mono" style={{ fontSize: '1.8rem', fontWeight: 700, color: vramUsed !== null ? '#34d399' : '#64748b' }}>
+            {vramUsed !== null ? Math.round(vramUsed) : 'N/A'}
           </span>
           <span style={{ fontSize: '0.85rem', color: '#64748b' }}>/ {Math.round(vramTotal)} MB</span>
         </div>
@@ -120,13 +137,17 @@ export const PerformanceGauges: React.FC<PerformanceGaugesProps> = ({
           <Thermometer size={16} color="#f59e0b" />
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-          <span className="font-mono" style={{ fontSize: '1.8rem', fontWeight: 700, color: '#fbbf24' }}>
-            {gpuTemp.toFixed(0)}
+          <span className="font-mono" style={{ fontSize: '1.8rem', fontWeight: 700, color: gpuTemp !== null ? '#fbbf24' : '#64748b' }}>
+            {gpuTemp !== null ? gpuTemp.toFixed(0) : 'N/A'}
           </span>
-          <span style={{ fontSize: '0.85rem', color: '#64748b' }}>°C</span>
+          <span style={{ fontSize: '0.85rem', color: '#64748b' }}>{gpuTemp !== null ? '°C' : ''}</span>
         </div>
         <div style={{ marginTop: '8px', fontSize: '0.72rem', color: '#94a3b8' }}>
-          Utilization: <strong className="font-mono">{gpuUtil.toFixed(0)}%</strong> compute load
+          {gpuUtil !== null ? (
+            <span>Load: <strong className="font-mono">{gpuUtil.toFixed(0)}%</strong> | {backend}</span>
+          ) : (
+            <span>Backend: <strong className="font-mono">{backend}</strong></span>
+          )}
         </div>
       </div>
 

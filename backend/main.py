@@ -124,22 +124,13 @@ def delete_zone(zone_id: str):
     return {"status": "success", "zone_id": zone_id}
 
 
+from sentinel_core.launcher import PipelineLaunchConfig, RuntimeRequirement
+
+
 @app.get("/api/metrics")
 def get_performance_metrics():
     """Return real-time inference latency, FPS, and GPU load."""
-    gpu = pipeline_mgr.get_gpu_status()
-    return {
-        "fps": pipeline_mgr.current_fps,
-        "inference_latency_ms": pipeline_mgr.inference_latency_ms,
-        "pipeline_latency_ms": round(pipeline_mgr.inference_latency_ms + 4.8, 1),
-        "target_fps": 30.0,
-        "gpu_temperature_c": gpu.get("temperature_c", 0.0),
-        "gpu_memory_used_mb": gpu.get("memory_used_mb", 0.0),
-        "gpu_memory_total_mb": gpu.get("memory_total_mb", 4096.0),
-        "gpu_utilization_pct": gpu.get("utilization_pct", 0.0),
-        "total_frames_processed": pipeline_mgr.total_frames_processed,
-        "mode": pipeline_mgr.mode
-    }
+    return pipeline_mgr.get_metrics()
 
 
 @app.post("/api/mode")
@@ -152,7 +143,13 @@ def set_pipeline_mode(req: ModeRequest):
 
 
 class PipelineStartRequest(BaseModel):
-    input_source: Optional[str] = None
+    input_source: str = "assets/workplace_safety_demo.mp4"
+    yolo_model: Optional[str] = "pipegen_pipeline/official_pipegen_build/model_stage/yolov8n.fp32.plan"
+    pose_model: Optional[str] = "pipegen_pipeline/official_pipegen_build/model_stage/6-yolo11n-pose/yolo11n-pose.fp32.plan"
+    output_video: Optional[str] = "assets/annotated_pipeline_run.mp4"
+    runtime_mode: str = "tensorrt_required"
+    no_show: bool = True
+    loop: bool = False
 
 
 @app.post("/api/pipegen/ingest")
@@ -161,34 +158,52 @@ async def ingest_pipegen_metadata(payload: Dict[str, Any]):
     Direct webhook / socket endpoint to ingest real-time detection metadata
     emitted by CraftifAI PipeGen DeepStream pipeline.
     """
-    t0 = time.time()
-    pipeline_mgr.last_pipegen_ingest_time = t0
-
+    t0 = time.perf_counter()
     detections = adapter.parse_frame_payload(payload)
-    pipeline_mgr.latest_live_detections = detections
-    pipeline_mgr.total_detections += len(detections)
-    pipeline_mgr.total_frames_processed += 1
-
-    incidents = pipeline_mgr.zone_monitor.process_detections(detections, frame_timestamp=t0)
-    latency = (time.time() - t0) * 1000.0
-    pipeline_mgr.inference_latency_ms = round(latency, 2)
-
+    incidents = pipeline_mgr.zone_monitor.process_detections(detections, frame_timestamp=time.time())
     for inc in incidents:
         await pipeline_mgr.broadcast_incident(inc)
+    handler_ms = (time.perf_counter() - t0) * 1000.0
+    pipeline_mgr.record_ingested_frame(detections, payload, ingest_handler_ms=handler_ms)
 
     return {
         "status": "processed",
         "detections_count": len(detections),
         "incidents_triggered": len(incidents),
-        "latency_ms": round(latency, 2)
+        "latency_ms": round(handler_ms, 2),
+        "ingest_handler_latency_ms": round(handler_ms, 2),
+        "runner_inference_latency_ms": payload.get("inference_latency_ms")
     }
 
 
 @app.post("/api/pipeline/start")
 def start_pipeline(req: Optional[PipelineStartRequest] = None):
     """Launch the real PipeGen / DeepStream container inference pipeline in background."""
-    src = req.input_source if req else None
-    return pipeline_mgr.start_pipegen_pipeline(input_source=src)
+    if req is not None:
+        try:
+            runtime_enum = RuntimeRequirement(req.runtime_mode)
+        except ValueError:
+            valid_opts = [r.value for r in RuntimeRequirement]
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid runtime_mode '{req.runtime_mode}'. Must be one of: {valid_opts}"
+            )
+        cfg = PipelineLaunchConfig(
+            input_source=req.input_source,
+            yolo_model=req.yolo_model or "pipegen_pipeline/official_pipegen_build/model_stage/yolov8n.fp32.plan",
+            pose_model=req.pose_model or "pipegen_pipeline/official_pipegen_build/model_stage/6-yolo11n-pose/yolo11n-pose.fp32.plan",
+            output_video=req.output_video,
+            runtime_mode=runtime_enum,
+            no_show=req.no_show,
+            loop=req.loop
+        )
+    else:
+        cfg = PipelineLaunchConfig()
+
+    result = pipeline_mgr.start_pipegen_pipeline(launch_config=cfg)
+    if result.get("status") in ("validation_failed", "command_construction_failed", "startup_failed", "error"):
+        raise HTTPException(status_code=400, detail=result)
+    return result
 
 
 @app.post("/api/pipeline/stop")

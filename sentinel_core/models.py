@@ -98,19 +98,29 @@ class SafetyIncident(BaseModel):
 
 
 class PipelineStatus(BaseModel):
-    """Current runtime status of PipeGen and SentinelVision."""
-    pipeline_id: str = "pipegen_person_track_a"
+    """Current runtime status of PipeGen and SentinelVision with strict metric provenance."""
+    pipeline_id: str = "sentinel_pipegen_track_a"
     pipegen_installed: bool = True
     pipegen_version: str = "0.5.1"
     container_ready: bool = False
-    active_model: str = "yolov8s_person_fp16"
+    active_models: List[str] = Field(default_factory=lambda: ["yolov8n", "yolo11n-pose"])
     trt_engine_loaded: bool = False
-    gpu_device: str = "NVIDIA GeForce RTX 2050"
-    gpu_driver: str = "592.82"
-    cuda_version: str = "13.1"
-    current_fps: float = 0.0
-    inference_latency_ms: float = 0.0
-    mode: str = "live"  # "live" | "demo"
+    inference_backend: Optional[str] = None
+    gpu_device: Optional[str] = None
+    gpu_driver: Optional[str] = None
+    cuda_version: Optional[str] = None
+    target_fps: float = 30.0
+    target_latency_ms: float = 10.0
+    measured_fps: Optional[float] = None
+    measured_inference_latency_ms: Optional[float] = None
+    measured_pipeline_latency_ms: Optional[float] = None
+    measured_ingest_latency_ms: Optional[float] = None
+    metrics_source: str = "none"  # "measured_gpu_pipeline", "demo_synthetic_fixture", "none"
+    is_stale: bool = True
+    pipeline_process_state: str = "stopped"  # "stopped", "starting", "running", "failed"
+    last_error: Optional[str] = None
+    mode: str = "demo"  # "live" | "demo"
     total_frames_processed: int = 0
     total_detections: int = 0
     total_incidents: int = 0
+    active_intrusions: int = 0

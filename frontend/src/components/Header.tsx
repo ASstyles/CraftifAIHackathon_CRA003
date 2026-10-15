@@ -91,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({
               RTX 2050 (4GB)
             </span>
             <span className="font-mono" style={{ color: '#38bdf8', fontSize: '0.75rem' }}>
-              {status?.gpu?.temperature_c ? `${status.gpu.temperature_c}°C` : '54°C'}
+              {status?.gpu?.available && status?.gpu?.temperature_c !== null ? `${status.gpu.temperature_c}°C` : 'N/A'}
             </span>
           </div>
 
