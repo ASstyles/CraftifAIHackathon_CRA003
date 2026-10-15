@@ -33,6 +33,9 @@ def run_e2e_acceptance_test():
         "overall_status": "FAILED"
     }
 
+    # Stage 0: Isolate test environment by resetting live telemetry
+    client.post("/api/pipeline/reset-telemetry")
+
     # Stage 1: Configure Restricted Hazard Zone
     zone_payload = {
         "zone_id": "e2e_robotic_perimeter",
@@ -62,7 +65,7 @@ def run_e2e_acceptance_test():
     safe_payload = {
         "frame_num": 10,
         "source_id": 0,
-        "inference_backend": "TensorRT_10.3_FP32",
+        "inference_backend": "SYNTHETIC_ACCEPTANCE_FIXTURE",
         "inference_latency_ms": 5.06,
         "objects": [
             {
@@ -87,7 +90,7 @@ def run_e2e_acceptance_test():
     intrusion_payload = {
         "frame_num": 50,
         "source_id": 0,
-        "inference_backend": "TensorRT_10.3_FP32",
+        "inference_backend": "SYNTHETIC_ACCEPTANCE_FIXTURE",
         "inference_latency_ms": 5.12,
         "objects": [
             {
@@ -112,7 +115,7 @@ def run_e2e_acceptance_test():
     cooldown_payload = {
         "frame_num": 55,
         "source_id": 0,
-        "inference_backend": "TensorRT_10.3_FP32",
+        "inference_backend": "SYNTHETIC_ACCEPTANCE_FIXTURE",
         "inference_latency_ms": 4.98,
         "objects": [
             {
@@ -149,10 +152,16 @@ def run_e2e_acceptance_test():
     results["stages"]["6_schema_compliance"] = "PASS"
     print(f"[PASS] Stage 6: Incident schema verified: {parsed_incident.event_type} (Zone: {parsed_incident.zone_id}, Track: {parsed_incident.track_id})")
 
-    # Stage 7: Clean up test zone
+    # Stage 7: Clean up test zone and reset telemetry
     client.delete("/api/zones/e2e_robotic_perimeter")
+    client.post("/api/pipeline/reset-telemetry")
+    res_clean_metrics = client.get("/api/metrics")
+    assert res_clean_metrics.status_code == 200
+    metrics_data = res_clean_metrics.json()
+    assert metrics_data["fps"] is None, "Measured FPS was not reset after test teardown"
+    assert metrics_data["inference_latency_ms"] is None, "Inference latency was not reset after test teardown"
     results["stages"]["7_cleanup"] = "PASS"
-    print("[PASS] Stage 7: Test zone cleaned up successfully")
+    print("[PASS] Stage 7: Test zone and test telemetry cleaned up successfully")
 
     results["overall_status"] = "PASS"
 

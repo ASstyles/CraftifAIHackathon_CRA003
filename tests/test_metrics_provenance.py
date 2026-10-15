@@ -91,3 +91,23 @@ def test_stale_metrics_become_unavailable(manager):
     assert metrics["fps"] is None
     assert metrics["inference_latency_ms"] is None
     assert metrics["pipeline_latency_ms"] is None
+
+
+def test_reset_telemetry_isolation(manager):
+    """Verify reset_telemetry restores manager to uninitialized baseline."""
+    manager.set_mode("live")
+    dummy_det = Detection(track_id=1, confidence=0.9, bounding_box=[10, 10, 50, 50])
+    manager.record_ingested_frame([dummy_det], {"inference_latency_ms": 5.2, "inference_backend": "TRT"}, ingest_handler_ms=0.3)
+
+    assert manager.measured_inference_latency_ms == 5.2
+    assert manager.metrics_source == "pipegen_runner_telemetry"
+
+    # Reset
+    manager.reset_telemetry()
+    assert manager.measured_fps is None
+    assert manager.measured_inference_latency_ms is None
+    assert manager.measured_pipeline_latency_ms is None
+    assert manager.measured_ingest_latency_ms is None
+    assert manager.metrics_source == "uninitialized"
+    assert manager.last_measurement_time is None
+

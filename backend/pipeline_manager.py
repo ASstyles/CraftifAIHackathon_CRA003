@@ -208,6 +208,18 @@ class PipelineManager:
         else:
             self.measured_pipeline_latency_ms = None
 
+    def reset_telemetry(self):
+        """Reset live measured telemetry back to uninitialized state (for clean test isolation)."""
+        self._frame_timestamps.clear()
+        self.measured_fps = None
+        self.measured_inference_latency_ms = None
+        self.measured_pipeline_latency_ms = None
+        self.measured_ingest_latency_ms = None
+        self.metrics_source = "uninitialized"
+        self.last_measurement_time = None
+        self.latest_live_detections = []
+        self.active_detections = []
+
     def get_benchmark_data(self) -> Dict[str, Any]:
         """Load empirical measured benchmark data from actual_measured_benchmark.json."""
         benchmark_file = os.path.join(self.workspace_dir, "pipegen_pipeline", "actual_measured_benchmark.json")

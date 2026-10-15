@@ -132,3 +132,27 @@ def test_process_manager_handles_missing_file_gracefully(tmp_path):
     assert res["status"] == "validation_failed"
     assert "error" in res
     assert not mgr.is_running()
+
+
+def test_invalid_runtime_mode_pydantic_validation():
+    """Verify Pydantic validation rejects invalid runtime string."""
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        PipelineLaunchConfig(runtime_mode="unsupported_backend")
+
+
+def test_resolve_workspace_path_absolute_and_relative():
+    """Verify path normalization handles both relative and absolute paths."""
+    ws = "/base/sentinel"
+    assert resolve_workspace_path("assets/video.mp4", ws) == os.path.normpath("/base/sentinel/assets/video.mp4")
+    abs_p = os.path.abspath("/etc/models/model.plan")
+    assert resolve_workspace_path(abs_p, ws) == abs_p
+
+
+def test_to_container_path_outside_workspace():
+    """Verify to_container_path preserves paths outside workspace without breaking."""
+    ws = "/workspace_dir"
+    outside = "/var/data/stream.mp4"
+    res = to_container_path(outside, ws)
+    assert res == outside
+

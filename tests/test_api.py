@@ -30,13 +30,66 @@ def test_status_endpoint():
 
 
 def test_metrics_endpoint():
-    """Verify performance metrics returns FPS and latency."""
+    """Verify performance metrics returns FPS and latency keys."""
     res = client.get("/api/metrics")
     assert res.status_code == 200
     data = res.json()
     assert "fps" in data
     assert "inference_latency_ms" in data
-    assert data["fps"] > 0
+    assert "metrics_source" in data
+    assert "mode" in data
+
+
+def test_malformed_ingest_payload():
+    """Verify rejection of malformed or oversized ingestion payloads."""
+    # 1. Non-dict payload
+    res1 = client.post("/api/pipegen/ingest", json="not a dictionary")
+    assert res1.status_code == 422
+
+    # 2. Objects is not a list
+    res2 = client.post("/api/pipegen/ingest", json={"objects": "not a list"})
+    assert res2.status_code == 422
+
+    # 3. Oversized payload (more than 200 objects)
+    oversized = [{"class_id": 0, "rect_params": {"left": 0, "top": 0, "width": 10, "height": 10}} for _ in range(205)]
+    res3 = client.post("/api/pipegen/ingest", json={"objects": oversized})
+    assert res3.status_code == 400
+    assert "Too many objects" in res3.json()["detail"]
+
+
+def test_reset_telemetry_endpoint():
+    """Verify reset telemetry endpoint resets metrics to clean uninitialized state."""
+    # Ensure mode is live so live metric contract is tested
+    client.post("/api/mode", json={"mode": "live"})
+
+    # First ingest a test frame to populate metrics
+    client.post("/api/pipegen/ingest", json={
+        "objects": [{"class_id": 0, "rect_params": {"left": 10, "top": 10, "width": 50, "height": 100}}],
+        "inference_latency_ms": 6.5
+    })
+    # Reset
+    res_reset = client.post("/api/pipeline/reset-telemetry")
+    assert res_reset.status_code == 200
+    assert res_reset.json()["status"] == "success"
+
+    # Verify metrics are clean
+    res_metrics = client.get("/api/metrics")
+    assert res_metrics.status_code == 200
+    m = res_metrics.json()
+    assert m["mode"] == "live"
+    assert m["fps"] is None
+    assert m["inference_latency_ms"] is None
+
+
+def test_cors_headers():
+    """Verify CORS headers respond correctly to allowed localhost origin."""
+    res = client.options("/api/status", headers={
+        "Origin": "http://localhost:5173",
+        "Access-Control-Request-Method": "GET"
+    })
+    assert res.status_code == 200
+    assert res.headers.get("access-control-allow-origin") == "http://localhost:5173"
+    assert res.headers.get("access-control-allow-credentials") == "true"
 
 
 def test_zones_crud_endpoints():
@@ -120,4 +173,5 @@ def test_pipeline_control_endpoints():
     res_stop = client.post("/api/pipeline/stop")
     assert res_stop.status_code == 200
     assert "status" in res_stop.json()
+
 

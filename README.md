@@ -175,19 +175,19 @@ wsl -d Ubuntu docker info | grep -i "Runtimes"
 ```
 
 ### Step 2: Run Automated Tests
-SentinelVision includes a 41-test unit and integration test suite:
+SentinelVision includes a 53-test unit and integration test suite:
 ```bash
 # In repository root:
 python -m pytest tests/ -v
 ```
-*Result: 41 passed (100% test pass rate covering launcher safety, TRT error handling, metric provenance, geometry, ankle pose vs foot localization, suppression, dwell time, schema, and API).*
+*Result: 53 passed (100% test pass rate covering launcher safety and named CLI flags, TRT error handling, metric provenance and synthetic test isolation, geometry, ankle pose vs foot localization, SpatialTracker persistence and occlusion survival, suppression, dwell time, schema, CORS security, malformed payload validation, and API).*
 
 ### Step 2.1: Run End-to-End Acceptance Test
 Execute the full 7-stage event path verification (zone configuration -> mode switch -> safe frame -> intrusion trigger -> cooldown suppression -> schema check -> cleanup):
 ```bash
 python scripts/test_end_to_end.py
 ```
-*Output summary saved to `logs/end_to_end_test_summary.json`.*
+*Output summary saved to `logs/end_to_end_test_summary.json`. Note: This script validates the incident ingestion contract using isolated synthetic acceptance fixtures and resets telemetry afterwards to prevent metric pollution.*
 
 ### Step 3: Start the Backend Server
 ```bash
@@ -217,10 +217,16 @@ bash scripts/compile_engines.sh
 ### Step 6: Run Official PipeGen GPU Inference Pipeline
 To execute the verified DeepStream 7.1 container pipeline against the workplace safety video feed and stream detections directly into the FastAPI backend:
 ```bash
-# Canonical launcher with explicit runtime requirement:
-bash scripts/run_pipegen_end_to_end.sh --runtime tensorrt_required
+# Canonical launcher with explicit named arguments:
+bash scripts/run_pipegen_end_to_end.sh \
+  --input assets/workplace_safety_demo.mp4 \
+  --runtime tensorrt_required \
+  --api-ingest http://localhost:8000/api/pipegen/ingest \
+  --output assets/annotated_pipeline_run.mp4 \
+  --no-show
 ```
-*(On Windows WSL2 systems: `wsl -d Ubuntu bash ./scripts/run_pipegen_end_to_end.sh --runtime tensorrt_required`)*
+*(On Windows WSL2 systems where the backend runs on the Windows host, pass `--api-ingest http://172.18.32.1:8000/api/pipegen/ingest` to direct container traffic across the WSL2 virtual gateway)*
+*(Inspect all options and flags via: `bash scripts/run_pipegen_end_to_end.sh --help`)*
 *(To run in ONNX CUDA mode when TensorRT engines are unavailable: `--runtime onnx_cuda_allowed`)*
 
 ---

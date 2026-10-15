@@ -181,6 +181,9 @@ def main():
     pool = ThreadPoolExecutor(max_workers=2)
     fps = 0.0
     frame_idx = 0
+    ingest_sent_count = 0
+    ingest_fail_count = 0
+    last_ingest_error = None
 
     try:
         while True:
@@ -267,10 +270,28 @@ def main():
                         "inference_backend": getattr(yolo, "backend_name", "Unknown"),
                         "inference_latency_ms": round(infer_ms, 2)
                     }).encode("utf-8")
-                    req = urllib.request.Request(args.api_ingest, data=payload, headers={"Content-Type": "application/json"})
-                    urllib.request.urlopen(req, timeout=0.2)
-                except Exception:
-                    pass
+                    req = urllib.request.Request(
+                        args.api_ingest,
+                        data=payload,
+                        headers={"Content-Type": "application/json"}
+                    )
+                    with urllib.request.urlopen(req, timeout=0.5) as resp:
+                        if resp.status == 200:
+                            ingest_sent_count += 1
+                        else:
+                            ingest_fail_count += 1
+                            if ingest_fail_count <= 3 or ingest_fail_count % 60 == 0:
+                                print(f"[Ingest Warning] HTTP {resp.status} posting frame {frame_idx} to {args.api_ingest}", file=sys.stderr)
+                except urllib.error.URLError as e:
+                    ingest_fail_count += 1
+                    last_ingest_error = str(e.reason) if hasattr(e, "reason") else str(e)
+                    if ingest_fail_count <= 3 or ingest_fail_count % 60 == 0:
+                        print(f"[Ingest Connection Error] Frame {frame_idx} failed: {last_ingest_error}", file=sys.stderr)
+                except Exception as e:
+                    ingest_fail_count += 1
+                    last_ingest_error = str(e)
+                    if ingest_fail_count <= 3 or ingest_fail_count % 60 == 0:
+                        print(f"[Ingest Error] Frame {frame_idx} failed: {e}", file=sys.stderr)
 
             frame_idx += 1
 
@@ -312,6 +333,8 @@ def main():
             except Exception:
                 pass
         print(f"Pipeline execution finished. Processed {frame_idx} frames.")
+        if args.api_ingest:
+            print(f"Backend Ingest Telemetry: {ingest_sent_count} delivered, {ingest_fail_count} failed to {args.api_ingest}")
 
 
 if __name__ == "__main__":

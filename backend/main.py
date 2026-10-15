@@ -47,10 +47,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Enable CORS for Vite frontend
+# Enable CORS for Vite frontend (restricted to localhost/127.0.0.1 origins for secure credential handling)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -158,6 +158,15 @@ async def ingest_pipegen_metadata(payload: Dict[str, Any]):
     Direct webhook / socket endpoint to ingest real-time detection metadata
     emitted by CraftifAI PipeGen DeepStream pipeline.
     """
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=422, detail="Payload must be a JSON object")
+
+    raw_objects = payload.get("objects", [])
+    if not isinstance(raw_objects, list):
+        raise HTTPException(status_code=422, detail="'objects' must be a list")
+    if len(raw_objects) > 200:
+        raise HTTPException(status_code=400, detail="Too many objects in frame (max 200)")
+
     t0 = time.perf_counter()
     detections = adapter.parse_frame_payload(payload)
     incidents = pipeline_mgr.zone_monitor.process_detections(detections, frame_timestamp=time.time())
@@ -174,6 +183,13 @@ async def ingest_pipegen_metadata(payload: Dict[str, Any]):
         "ingest_handler_latency_ms": round(handler_ms, 2),
         "runner_inference_latency_ms": payload.get("inference_latency_ms")
     }
+
+
+@app.post("/api/pipeline/reset-telemetry")
+def reset_pipeline_telemetry():
+    """Reset live measured telemetry back to uninitialized state for test isolation."""
+    pipeline_mgr.reset_telemetry()
+    return {"status": "success", "message": "Live telemetry reset to uninitialized state"}
 
 
 @app.post("/api/pipeline/start")
