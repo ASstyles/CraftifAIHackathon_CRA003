@@ -1,0 +1,27 @@
+# CraftifAI PipeGen - Primary GIE Configuration
+# Target: NVIDIA GeForce RTX 2050 (Compute 8.6, CUDA 13.1)
+# Precision: FP16 TensorRT Engine
+
+[property]
+gpu-id=0
+net-scale-factor=0.003921569793457
+onnx-file=/workspace/pipegen_pipeline/yolov8s_person.onnx
+model-engine-file-path=/workspace/pipegen_pipeline/model_b1_gpu0_fp16.engine
+labelfile-path=/workspace/pipegen_pipeline/labels.txt
+batch-size=1
+network-mode=1
+num-detected-classes=1
+interval=0
+gie-unique-id=1
+is-classifier=0
+process-mode=1
+cluster-mode=2
+maintain-aspect-ratio=1
+workspace-size=1024
+parse-bbox-func-name=NvDsInferParseCustomYoloV8
+custom-lib-path=/opt/PipeGen/lib/libnvdsinfer_custom_impl_yolov8.so
+
+[class-attrs-all]
+pre-cluster-threshold=0.60
+topk=100
+nms-iou-threshold=0.45

@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual Environments
+venv/
+.venv/
+env/
+sentinel_env/
+
+# Build artifacts
+frontend/dist/
+dist/
+build/
+*.egg-info/
+
+# Logs and binary packages
+*.log
+.pipegen-state/
+*.deb
+*.engine
+*.onnx
+*.weights
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db

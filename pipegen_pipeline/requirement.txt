@@ -1,0 +1,37 @@
+CraftifAI PipeGen — Natural Language Pipeline Requirement Prompt
+Project: SentinelVision (Industrial Workplace Safety & Restricted Area Intrusion Detection)
+Track: CraftifAI Physical AI Hackathon — Track A: PipeGen
+Target Hardware: NVIDIA GeForce RTX 2050 (4 GB VRAM, Compute Capability 8.6, CUDA 13.1, Driver 592.82)
+
+================================================================================
+NATURAL LANGUAGE PROMPT ENTERED INTO PIPEGEN:
+================================================================================
+"Create a real-time computer vision pipeline for industrial workplace safety that takes high-definition 1080p/720p H.264 video streams from safety cameras, decodes video frames on the NVIDIA GPU using hardware NVDEC, performs low-latency person detection using a TensorRT-optimized person detector model in FP16 precision, tracks workers across consecutive frames using persistent track IDs, detects when any worker enters configured restricted hazard zones (such as robotic arm perimeters or high-voltage machinery enclosures), and emits timestamped, structured JSON incident events with worker bounding boxes, foot contact coordinates, and detection confidence scores."
+
+================================================================================
+PIPELINE SPECIFICATIONS & CONSTRAINTS:
+================================================================================
+1. Input Source:
+   - File input (e.g. assets/workplace_safety_demo.mp4) or Live RTSP / USB V4L2 camera stream.
+   - 30 frames per second at 1280x720 or 1920x1080 resolution.
+
+2. Pre-processing & Decoding:
+   - Hardware accelerated decoding using NVIDIA nvv4l2decoder.
+   - Batch size: 1 (optimized for low-latency edge deployment).
+   - NVMM GPU memory buffer allocation.
+
+3. Inference Model:
+   - Primary Object Detector (PGIE): YOLOv8s-Person / PeopleNet.
+   - Precision: TensorRT FP16 (Half Precision) to maintain VRAM footprint strictly under 1.5 GB on the 4 GB RTX 2050.
+   - Detection classes: Class 0 (Person / Worker).
+   - Confidence threshold: >= 0.60.
+   - NMS IOU threshold: 0.45.
+
+4. Multi-Object Tracking (nvtracker):
+   - Tracking algorithm: NvSORT / NvDeepSORT.
+   - Preserves person track ID across occlusions and motion blur.
+
+5. Workplace Safety Logic & Actionable Output:
+   - Ray-casting point-in-polygon algorithm applied on worker bottom-center coordinate.
+   - Duplicate event suppression with configurable cooldown period (3.0s).
+   - Structured JSON event serialization compliant with Hackathon Track A schema.

@@ -1,0 +1,111 @@
+{
+  "$schema": "https://developer.craftifai.com/schemas/pipegen-ir-v1.json",
+  "pipeline_name": "sentinelvision_workplace_safety",
+  "version": "0.5.1",
+  "target_platform": {
+    "arch": "x86_64",
+    "gpu": "NVIDIA GeForce RTX 2050",
+    "compute_capability": "8.6",
+    "vram_limit_mb": 4096,
+    "cuda_version": "13.1",
+    "tensorrt_version": "10.x",
+    "deepstream_version": "7.1"
+  },
+  "nodes": [
+    {
+      "id": "source_0",
+      "type": "filesrc",
+      "properties": {
+        "location": "/workspace/assets/workplace_safety_demo.mp4",
+        "loop": true
+      },
+      "outputs": ["demux_0"]
+    },
+    {
+      "id": "demux_0",
+      "type": "qtdemux",
+      "outputs": ["parser_0"]
+    },
+    {
+      "id": "parser_0",
+      "type": "h264parse",
+      "outputs": ["decoder_0"]
+    },
+    {
+      "id": "decoder_0",
+      "type": "nvv4l2decoder",
+      "properties": {
+        "cudadec-memtype": 0,
+        "enable-max-performance": 1
+      },
+      "outputs": ["muxer_0"]
+    },
+    {
+      "id": "muxer_0",
+      "type": "nvstreammux",
+      "properties": {
+        "batch-size": 1,
+        "width": 1280,
+        "height": 720,
+        "batched-push-timeout": 40000,
+        "nvbuf-memory-type": 0,
+        "live-source": 0
+      },
+      "outputs": ["pgie_0"]
+    },
+    {
+      "id": "pgie_0",
+      "type": "nvinfer",
+      "properties": {
+        "config-file-path": "/workspace/pipegen_pipeline/config_infer_primary.txt",
+        "model-engine-file": "/workspace/pipegen_pipeline/model_b1_gpu0_fp16.engine",
+        "batch-size": 1,
+        "process-mode": 1,
+        "gpu-id": 0,
+        "network-mode": 1
+      },
+      "outputs": ["tracker_0"]
+    },
+    {
+      "id": "tracker_0",
+      "type": "nvtracker",
+      "properties": {
+        "tracker-width": 640,
+        "tracker-height": 384,
+        "ll-lib-file": "/opt/nvidia/deepstream/deepstream/lib/libnvds_nvmultiobjecttracker.so",
+        "ll-config-file": "/opt/nvidia/deepstream/deepstream/samples/configs/deepstream-app/config_tracker_NvSORT.yml",
+        "gpu-id": 0
+      },
+      "outputs": ["safety_probe_0"]
+    },
+    {
+      "id": "safety_probe_0",
+      "type": "custom_python_probe",
+      "properties": {
+        "handler": "sentinel_core.pipegen_adapter:PipeGenAdapter",
+        "actionable_sink": "http://127.0.0.1:8000/api/pipegen/ingest",
+        "format": "application/json"
+      },
+      "outputs": ["osd_0"]
+    },
+    {
+      "id": "osd_0",
+      "type": "nvdsosd",
+      "properties": {
+        "gpu-id": 0,
+        "process-mode": 0,
+        "display-text": 1,
+        "display-bbox": 1
+      },
+      "outputs": ["sink_0"]
+    },
+    {
+      "id": "sink_0",
+      "type": "nveglglessink",
+      "properties": {
+        "sync": 1,
+        "qos": 0
+      }
+    }
+  ]
+}
