@@ -121,6 +121,48 @@ class SpatialTracker:
         return [t for t in self.tracks if t.time_since_update == 0]
 
 
+def compute_ground_contact(box, pose_res, iou_thresh=0.35, ankle_conf_thresh=0.3):
+    """
+    Associate a person bounding box with pose estimation keypoints to determine
+    ground contact point (ankles projection or bounding box bottom-center fallback).
+    """
+    x1, y1, x2, y2 = [float(v) for v in box]
+    contact_x = (x1 + x2) / 2.0
+    contact_y = y2
+    contact_source = "bbox_bottom_center"
+
+    for p_det in pose_res:
+        p_box = p_det.get("box", [0, 0, 0, 0])
+        ix1, iy1 = max(x1, p_box[0]), max(y1, p_box[1])
+        ix2, iy2 = min(x2, p_box[2]), min(y2, p_box[3])
+        inter = max(0.0, ix2 - ix1) * max(0.0, iy2 - iy1)
+        if inter > 0:
+            area_t = max(1.0, (x2 - x1) * (y2 - y1))
+            area_p = max(1.0, (p_box[2] - p_box[0]) * (p_box[3] - p_box[1]))
+            p_iou = inter / (area_t + area_p - inter)
+            if p_iou >= iou_thresh:
+                kx = p_det.get("kx", [])
+                ky = p_det.get("ky", [])
+                kc = p_det.get("kc", [])
+                left_visible = (len(kc) > 15 and kc[15] >= ankle_conf_thresh)
+                right_visible = (len(kc) > 16 and kc[16] >= ankle_conf_thresh)
+                if left_visible and right_visible:
+                    contact_x = float((kx[15] + kx[16]) / 2.0)
+                    contact_y = float(max(ky[15], ky[16]))
+                    contact_source = "pose_ankles"
+                elif left_visible:
+                    contact_x = float(kx[15])
+                    contact_y = float(ky[15])
+                    contact_source = "pose_left_ankle"
+                elif right_visible:
+                    contact_x = float(kx[16])
+                    contact_y = float(ky[16])
+                    contact_source = "pose_right_ankle"
+                break
+
+    return [contact_x, contact_y], contact_source
+
+
 # ===========================================================================
 # CLI Arguments
 # ===========================================================================
@@ -214,38 +256,8 @@ def main():
                     x1, y1, x2, y2 = [float(v) for v in trk.box]
                     
                     # Pose Association: Find corresponding pose keypoints by IoU
-                    contact_x = (x1 + x2) / 2.0
-                    contact_y = y2
-                    contact_source = "bbox_bottom_center"
-
-                    for p_det in pose_res:
-                        p_box = p_det["box"]
-                        # Check IoU overlap with current person bounding box
-                        ix1, iy1 = max(x1, p_box[0]), max(y1, p_box[1])
-                        ix2, iy2 = min(x2, p_box[2]), min(y2, p_box[3])
-                        inter = max(0.0, ix2 - ix1) * max(0.0, iy2 - iy1)
-                        if inter > 0:
-                            area_t = max(1.0, (x2 - x1) * (y2 - y1))
-                            area_p = max(1.0, (p_box[2] - p_box[0]) * (p_box[3] - p_box[1]))
-                            p_iou = inter / (area_t + area_p - inter)
-                            if p_iou >= 0.35:
-                                # Keypoint 15: Left Ankle, Keypoint 16: Right Ankle
-                                kx, ky, kc = p_det["kx"], p_det["ky"], p_det["kc"]
-                                left_visible = (kc[15] >= 0.3)
-                                right_visible = (kc[16] >= 0.3)
-                                if left_visible and right_visible:
-                                    contact_x = float((kx[15] + kx[16]) / 2.0)
-                                    contact_y = float(max(ky[15], ky[16]))
-                                    contact_source = "pose_ankles"
-                                elif left_visible:
-                                    contact_x = float(kx[15])
-                                    contact_y = float(ky[15])
-                                    contact_source = "pose_left_ankle"
-                                elif right_visible:
-                                    contact_x = float(kx[16])
-                                    contact_y = float(ky[16])
-                                    contact_source = "pose_right_ankle"
-                                break
+                    contact_pt, contact_source = compute_ground_contact([x1, y1, x2, y2], pose_res)
+                    contact_x, contact_y = contact_pt
 
                     objects.append({
                         "class_id": 0,

@@ -175,12 +175,12 @@ wsl -d Ubuntu docker info | grep -i "Runtimes"
 ```
 
 ### Step 2: Run Automated Tests
-SentinelVision includes a 53-test unit and integration test suite:
+SentinelVision includes a 59-test unit and integration test suite:
 ```bash
 # In repository root:
 python -m pytest tests/ -v
 ```
-*Result: 53 passed (100% test pass rate covering launcher safety and named CLI flags, TRT error handling, metric provenance and synthetic test isolation, geometry, ankle pose vs foot localization, SpatialTracker persistence and occlusion survival, suppression, dwell time, schema, CORS security, malformed payload validation, and API).*
+*Result: 59 passed (100% test pass rate covering launcher safety and named CLI flags, TRT error handling, metric provenance and synthetic test isolation, geometry, ankle pose vs foot localization, SpatialTracker persistence and occlusion survival, suppression, dwell time, schema, CORS security, malformed payload validation, standalone export bundle integrity, and API).*
 
 ### Step 2.1: Run End-to-End Acceptance Test
 Execute the full 7-stage event path verification (zone configuration -> mode switch -> safe frame -> intrusion trigger -> cooldown suppression -> schema check -> cleanup):

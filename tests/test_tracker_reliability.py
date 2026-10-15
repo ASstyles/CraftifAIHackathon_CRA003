@@ -7,7 +7,8 @@ import pytest
 import numpy as np
 from pipegen_pipeline.official_pipegen_build.src1.yolov8_pose_parallel.yolov8_pose import (
     SpatialTracker,
-    Track
+    Track,
+    compute_ground_contact
 )
 
 
@@ -93,3 +94,86 @@ def test_tracker_iou_computation():
     # 50% overlap: intersection 5x10=50, union 100+100-50=150 -> IoU 1/3
     b4 = [5.0, 0.0, 15.0, 10.0]
     assert SpatialTracker._compute_iou(b1, b4) == pytest.approx(50.0 / 150.0)
+
+
+def test_tracker_crossing_paths_with_spatial_separation():
+    """Verify that two tracks moving in opposing directions preserve IDs when trajectories retain dominant IoU."""
+    tracker = SpatialTracker(max_age=5, iou_threshold=0.3)
+    # Person 1 moving left to right: [100, 100, 160, 200] (width 60)
+    # Person 2 moving right to left: [260, 100, 320, 200] (width 60)
+    f1 = [([100.0, 100.0, 160.0, 200.0], 0.9, 0), ([260.0, 100.0, 320.0, 200.0], 0.9, 0)]
+    t_f1 = tracker.update(f1)
+    id1, id2 = t_f1[0].track_id, t_f1[1].track_id
+
+    # Frame 2: Natural video frame motion (12 px step)
+    f2 = [([112.0, 100.0, 172.0, 200.0], 0.9, 0), ([248.0, 100.0, 308.0, 200.0], 0.9, 0)]
+    t_f2 = tracker.update(f2)
+    # Both IDs preserved
+    t_ids = {t.track_id for t in t_f2}
+    assert t_ids == {id1, id2}
+
+    # Frame 3: Continued motion
+    f3 = [([125.0, 100.0, 185.0, 200.0], 0.9, 0), ([235.0, 100.0, 295.0, 200.0], 0.9, 0)]
+    t_f3 = tracker.update(f3)
+    t_ids3 = {t.track_id for t in t_f3}
+    assert t_ids3 == {id1, id2}
+
+
+def test_tracker_handles_out_of_frame_or_degenerate_boxes():
+    """Verify tracker does not crash or corrupt state on zero-width or out-of-frame boxes."""
+    tracker = SpatialTracker(max_age=5, iou_threshold=0.3)
+    # Box with inverted or degenerate dimensions
+    degenerate = [([50.0, 50.0, 50.0, 50.0], 0.5, 0)]
+    tracks = tracker.update(degenerate)
+    assert len(tracks) == 1
+    assert np.allclose(tracks[0].box, [50.0, 50.0, 50.0, 50.0])
+
+    # Negative coordinates (partially off-screen top-left)
+    offscreen = [([-20.0, -10.0, 40.0, 80.0], 0.8, 0)]
+    tracks_off = tracker.update(offscreen)
+    assert len(tracks_off) >= 1
+
+
+def test_ground_contact_pose_ankles_and_fallback():
+    """Verify compute_ground_contact logic across both ankles, single ankle, and bbox fallback."""
+    person_box = [100.0, 100.0, 200.0, 300.0]
+
+    # Case 1: Both ankles visible with high confidence
+    kx = [0.0] * 17
+    ky = [0.0] * 17
+    kc = [0.0] * 17
+    kx[15], ky[15], kc[15] = 140.0, 295.0, 0.85  # Left ankle
+    kx[16], ky[16], kc[16] = 160.0, 298.0, 0.90  # Right ankle
+    pose_res_both = [{
+        "box": [95.0, 95.0, 205.0, 305.0],
+        "score": 0.9,
+        "kx": kx,
+        "ky": ky,
+        "kc": kc
+    }]
+    pt, src = compute_ground_contact(person_box, pose_res_both)
+    assert src == "pose_ankles"
+    assert pt[0] == pytest.approx(150.0)  # (140 + 160) / 2
+    assert pt[1] == pytest.approx(298.0)  # max(295, 298)
+
+    # Case 2: Only left ankle visible
+    kc_left_only = list(kc)
+    kc_left_only[16] = 0.1  # Right ankle occluded
+    pose_res_left = [{
+        "box": [95.0, 95.0, 205.0, 305.0],
+        "score": 0.9,
+        "kx": kx,
+        "ky": ky,
+        "kc": kc_left_only
+    }]
+    pt, src = compute_ground_contact(person_box, pose_res_left)
+    assert src == "pose_left_ankle"
+    assert pt[0] == pytest.approx(140.0)
+    assert pt[1] == pytest.approx(295.0)
+
+    # Case 3: No pose overlap or low confidence -> fallback to bbox bottom-center
+    pt_fallback, src_fallback = compute_ground_contact(person_box, [])
+    assert src_fallback == "bbox_bottom_center"
+    assert pt_fallback[0] == pytest.approx(150.0)  # (100 + 200) / 2
+    assert pt_fallback[1] == pytest.approx(300.0)  # y2
+
