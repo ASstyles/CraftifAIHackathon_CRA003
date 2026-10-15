@@ -1,6 +1,7 @@
 """
 SentinelVision - Strict Empirical Benchmark Audit Script
 Measures actual execution times, throughput, and GPU utilization.
+Separates pure model inference from host application pipeline components.
 """
 
 import os
@@ -16,7 +17,7 @@ workspace_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, workspace_dir)
 
 from sentinel_core.zone_monitor import ZoneMonitor
-from backend.sample_generator import simulate_detections_for_frame
+from sentinel_core.models import Detection
 
 
 def get_gpu_raw():
@@ -55,7 +56,7 @@ def run_empirical_benchmark():
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     video_fps = cap.get(cv2.CAP_PROP_FPS)
 
-    print("=== SentinelVision Empirical Benchmark Audit ===")
+    print("=== SentinelVision Empirical Host Application Benchmark ===")
     print(f"Target Video: {video_path}")
     print(f"Resolution: {width}x{height} | Total Frames: {total_video_frames} | Video Encoded FPS: {video_fps}")
 
@@ -73,6 +74,7 @@ def run_empirical_benchmark():
     frame_idx = 0
     t_start = time.perf_counter()
 
+    # Pre-generate sample ground truth worker trajectory for deterministic benchmark
     while True:
         t_loop_0 = time.perf_counter()
 
@@ -84,10 +86,23 @@ def run_empirical_benchmark():
             break
         frame_decode_times.append((t_dec_1 - t_dec_0) * 1000.0)
 
-        # Step B: Detection & Safety Logic
+        # Step B: Ground-Plane Foot Localization & Safety Logic
+        # Position moving worker across boundary
+        progress = frame_idx / max(1, total_video_frames)
+        person_x = 200.0 + progress * 400.0
+        person_y = 350.0 + progress * 200.0
+        sample_det = Detection(
+            track_id=1,
+            class_id=0,
+            class_name="person",
+            confidence=0.95,
+            bounding_box=[person_x - 30, person_y - 120, person_x + 30, person_y],
+            detection_point=[person_x, person_y],
+            contact_source="pose_ankles"
+        )
+
         t_logic_0 = time.perf_counter()
-        detections = simulate_detections_for_frame(frame_idx, total_frames=total_video_frames)
-        new_inc = monitor.process_detections(detections, frame_timestamp=t_loop_0)
+        new_inc = monitor.process_detections([sample_det], frame_timestamp=t_loop_0)
         t_logic_1 = time.perf_counter()
         safety_logic_times.append((t_logic_1 - t_logic_0) * 1000.0)
 
@@ -96,13 +111,10 @@ def run_empirical_benchmark():
 
         # Step C: Visualization & Overlay Rendering
         t_rend_0 = time.perf_counter()
-        # Draw zones and detections
         for z in monitor.get_zones():
             pts = np.array(z.polygon, np.int32)
             cv2.polylines(frame, [pts], True, (0, 0, 255), 2)
-        for d in detections:
-            bbox = [int(c) for c in d.bounding_box]
-            cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
+        cv2.circle(frame, (int(person_x), int(person_y)), 6, (0, 255, 0), -1)
         _, _ = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
         t_rend_1 = time.perf_counter()
         render_times.append((t_rend_1 - t_rend_0) * 1000.0)
@@ -115,7 +127,6 @@ def run_empirical_benchmark():
     cap.release()
 
     total_duration_sec = t_end - t_start
-    gpu_after = get_gpu_raw()
 
     # Empirical calculations
     actual_fps = frame_idx / total_duration_sec
@@ -125,41 +136,14 @@ def run_empirical_benchmark():
     mean_total_ms = float(np.mean(loop_times))
     p95_total_ms = float(np.percentile(loop_times, 95))
 
-    results = {
-        "execution_date": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
-        "measurement_method": "High-resolution monotonic timer (time.perf_counter) across all 300 video frames",
-        "workload_profile": "Python CPU Video Pipeline (OpenCV decode + Ray-Casting Safety Logic + JPEG rendering)",
-        "frames_evaluated": frame_idx,
-        "total_wall_clock_seconds": round(total_duration_sec, 3),
-        "actual_throughput_fps": round(actual_fps, 2),
-        "latency_breakdown_ms": {
-            "mean_video_decode_ms": round(mean_decode_ms, 3),
-            "mean_safety_logic_ms": round(mean_logic_ms, 3),
-            "mean_render_jpeg_ms": round(mean_render_ms, 3),
-            "mean_frame_processing_ms": round(mean_total_ms, 3),
-            "p95_frame_processing_ms": round(p95_total_ms, 3)
-        },
-        "incidents_detected_count": len(incidents_logged),
-        "gpu_telemetry_nvidia_smi": {
-            "initial": gpu_before,
-            "final": gpu_after
-        },
-        "tensorrt_gpu_engine_status": "PENDING (DeepStream 7.1 Docker container image download in progress)"
-    }
-
-    out_file = os.path.join(workspace_dir, "pipegen_pipeline", "actual_measured_benchmark.json")
-    with open(out_file, "w") as f:
-        json.dump(results, f, indent=2)
-
-    print("\n=== BENCHMARK RESULTS (RAW EMPIRICAL DATA) ===")
-    print(f"Total Frames Processed: {frame_idx}")
+    print(f"\n--- Benchmark Results ({frame_idx} Frames Processed) ---")
     print(f"Total Wall-Clock Time: {total_duration_sec:.3f} s")
-    print(f"Actual Measured Throughput: {actual_fps:.2f} FPS")
-    print(f"Mean Safety Zone Logic Latency: {mean_logic_ms:.3f} ms")
-    print(f"Mean Total Frame Latency: {mean_total_ms:.3f} ms (p95: {p95_total_ms:.3f} ms)")
-    print(f"Total Incidents Logged: {len(incidents_logged)}")
-    print(f"GPU VRAM Active: {gpu_after.get('memory_used_mb')} MiB / {gpu_after.get('memory_total_mb')} MiB")
-    print(f"Saved results to: {out_file}")
+    print(f"Actual Host Throughput: {actual_fps:.2f} FPS")
+    print(f"Mean Video Decode: {mean_decode_ms:.3f} ms")
+    print(f"Mean Ray-Casting Foot Logic: {mean_logic_ms:.3f} ms")
+    print(f"Mean Render & JPEG Encode: {mean_render_ms:.3f} ms")
+    print(f"Mean Total Host Frame Time: {mean_total_ms:.3f} ms (p95: {p95_total_ms:.3f} ms)")
+    print(f"Incidents Logged (with duplicate suppression): {len(incidents_logged)}")
 
 
 if __name__ == "__main__":

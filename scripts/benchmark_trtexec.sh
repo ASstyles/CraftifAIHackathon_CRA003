@@ -13,6 +13,4 @@ docker run --rm --gpus all \
     --loadEngine="$ENGINE_PATH" \
     --warmUp=200 \
     --duration=5 \
-    --iterations=100 \
-    --exportProfile=/workspace/pipegen_pipeline/trt_gpu_profile.json \
-    --exportTimes=/workspace/pipegen_pipeline/trt_gpu_times.json
+    --iterations=100

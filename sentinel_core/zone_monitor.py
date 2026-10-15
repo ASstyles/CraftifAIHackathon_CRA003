@@ -147,9 +147,13 @@ class ZoneMonitor:
             track.last_seen = current_time
             track.last_bbox = det.bounding_box
 
-            bbox = BoundingBox.from_list(det.bounding_box)
-            # Contact point: bottom-center of bounding box represents feet on ground
-            foot_x, foot_y = bbox.bottom_center
+            if det.detection_point and len(det.detection_point) == 2:
+                foot_x, foot_y = float(det.detection_point[0]), float(det.detection_point[1])
+                contact_source = getattr(det, "contact_source", "pose_ankles")
+            else:
+                bbox = BoundingBox.from_list(det.bounding_box)
+                foot_x, foot_y = bbox.bottom_center
+                contact_source = "bbox_bottom_center"
 
             # Check every active zone
             for zone_id, zone in self.zones.items():
@@ -187,6 +191,7 @@ class ZoneMonitor:
                             confidence=round(det.confidence, 4),
                             bounding_box=[round(c, 2) for c in det.bounding_box],
                             detection_point=[round(foot_x, 2), round(foot_y, 2)],
+                            contact_source=contact_source,
                             source=self.source_name,
                             risk_level=zone.risk_level,
                             dwell_time_seconds=round(dwell_time, 2),

@@ -2,8 +2,8 @@ import os
 import time
 import subprocess
 
-token_path = os.path.expanduser("/home/aviral/.pipegen/token")
-default_user_path = os.path.expanduser("/home/aviral/.pipegen/DefaultUser")
+token_path = os.path.expanduser("~/.pipegen/token")
+default_user_path = os.path.expanduser("~/.pipegen/DefaultUser")
 
 print("Monitoring PipeGen authentication state...")
 for i in range(1, 16):

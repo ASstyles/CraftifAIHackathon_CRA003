@@ -1,5 +1,5 @@
 {
-  "audit_timestamp": "2026-10-15T17:15:00Z",
+  "audit_timestamp": "2026-10-15T19:35:00Z",
   "target_hardware": {
     "gpu_name": "NVIDIA GeForce RTX 2050",
     "device_uuid": "GPU-73dbaf81-29a2-56c6-6b94-477600be6bf7",
@@ -24,45 +24,72 @@
     "device_memory_allocation_mb": 33.0,
     "context_device_memory_mb": 13.9,
     "benchmark_tool": "NVIDIA trtexec (TensorRT v100300)",
-    "sustained_throughput_qps": 185.98,
+    "sustained_throughput_qps": 194.52,
     "e2e_latency_ms": {
-      "min": 4.864,
-      "mean": 5.291,
-      "median": 5.005,
-      "p90": 6.159,
-      "p95": 6.412,
-      "p99": 6.810,
-      "max": 7.801
+      "min": 4.88,
+      "mean": 5.06,
+      "median": 4.99,
+      "p90": 5.28,
+      "p95": 5.46,
+      "p99": 5.99,
+      "max": 8.61
     },
     "gpu_compute_time_ms": {
-      "min": 4.406,
-      "mean": 4.827,
-      "median": 4.548,
-      "p90": 5.669,
-      "p95": 5.918,
-      "p99": 6.342
+      "min": 4.40,
+      "mean": 4.56,
+      "median": 4.50,
+      "p90": 4.75,
+      "p95": 4.97,
+      "p99": 5.40
     },
-    "host_to_device_latency_ms": 0.292,
-    "device_to_host_latency_ms": 0.172,
-    "pipegen_modelstage_reported_mean_ms": 5.484,
+    "host_to_device_latency_ms": 0.31,
+    "device_to_host_latency_ms": 0.18,
+    "pipegen_modelstage_reported_mean_ms": 5.48,
     "pipegen_modelstage_throughput_fps": 182.3,
     "pipegen_modelstage_power_w": 30.29,
-    "gpu_utilization_pct": 82.0,
     "gpu_temperature_c": 56.0
   },
-  "pipegen_pose_engine_compilation": {
+  "pipegen_pose_engine_gpu_benchmark": {
     "status": "VERIFIED_ON_DEVICE",
-    "model_architecture": "YOLO11n-Pose (PipeGen IR Node 6)",
+    "pipegen_version": "0.5.1",
+    "model_architecture": "YOLO11n-Pose Estimator (PipeGen IR Node 6)",
     "engine_file": "pipegen_pipeline/official_pipegen_build/model_stage/6-yolo11n-pose/yolo11n-pose.fp32.plan",
     "engine_size_bytes": 18899516,
     "engine_size_mb": 18.9,
     "tensorrt_version": "10.3.0",
+    "precision": "FP32 (Compiled for Ampere CC 8.6)",
     "trt_layers_count": 252,
+    "input_binding": "images [1, 3, 640, 640]",
+    "output_binding": "output0 [1, 56, 8400]",
+    "device_memory_allocation_mb": 37.0,
+    "context_device_memory_mb": 19.9,
+    "benchmark_tool": "NVIDIA trtexec (TensorRT v100300)",
+    "sustained_throughput_qps": 60.63,
+    "e2e_latency_ms": {
+      "min": 13.93,
+      "mean": 16.40,
+      "median": 15.83,
+      "p90": 18.64,
+      "p95": 20.46,
+      "p99": 25.17,
+      "max": 26.49
+    },
+    "gpu_compute_time_ms": {
+      "min": 13.38,
+      "mean": 15.83,
+      "median": 15.21,
+      "p90": 18.09,
+      "p95": 19.91,
+      "p99": 24.61
+    },
+    "host_to_device_latency_ms": 0.41,
+    "device_to_host_latency_ms": 0.16,
     "accuracy_score_ap_oks": 0.6732
   },
-  "cpu_safety_logic_baseline_benchmark": {
+  "cpu_application_pipeline_baseline": {
     "status": "VERIFIED",
-    "workload_profile": "Python Video Pipeline (OpenCV decode + Ray-Casting Foot Localization + JPEG render)",
+    "workload_profile": "Python Application Baseline (OpenCV decode + Spatial Tracker + Ray-Casting Foot Localization + JPEG render)",
+    "measurement_note": "Host-side logic benchmarked without model inference to isolate safety logic overhead",
     "frames_evaluated": 300,
     "actual_throughput_fps": 265.26,
     "latency_breakdown_ms": {

@@ -27,6 +27,7 @@ build/
 *.plan
 *.cache
 *.onnx
+!pipegen_pipeline/official_pipegen_build/src1/yolov8_pose_parallel/models/*.onnx
 *.weights
 
 # IDE

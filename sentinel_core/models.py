@@ -47,6 +47,8 @@ class Detection(BaseModel):
     class_name: str = "person"
     confidence: float = Field(ge=0.0, le=1.0)
     bounding_box: List[float] = Field(description="[xmin, ymin, xmax, ymax]")
+    detection_point: Optional[List[float]] = Field(default=None, description="[x, y] ground foot contact coordinate")
+    contact_source: str = Field(default="bbox_bottom_center", description="Method used: pose_ankles or bbox_bottom_center")
     raw_metadata: Optional[Dict[str, Any]] = None
 
 
@@ -87,6 +89,7 @@ class SafetyIncident(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
     bounding_box: List[float] = Field(description="[xmin, ymin, xmax, ymax]")
     detection_point: Optional[List[float]] = Field(default=None, description="[x, y] foot contact point")
+    contact_source: str = Field(default="bbox_bottom_center", description="Source of contact point (pose_ankles or bbox_bottom_center)")
     source: str = "sample_video"
     risk_level: str = "HIGH"
     dwell_time_seconds: float = 0.0

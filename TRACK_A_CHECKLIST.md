@@ -18,7 +18,7 @@
 | **4** | **Compiler Executed Successfully** | **VERIFIED** | [`pipegen_pipeline/official_pipegen_build/model_stage/ModelStage.log`](pipegen_pipeline/official_pipegen_build/model_stage/ModelStage.log)<br>[`pipegen_pipeline/official_pipegen_build/model_stage/compile.data.json`](pipegen_pipeline/official_pipegen_build/model_stage/compile.data.json) | PipeGen compiler successfully targeted TensorRT 10.3.0 for NVIDIA RTX 2050. Built 248 TRT layers at FP32 in 5.4s without precision fallback aborts. |
 | **5** | **Required TensorRT Engine Genuinely Generated** | **VERIFIED** | [`pipegen_pipeline/official_pipegen_build/model_stage/yolov8n.fp32.plan`](pipegen_pipeline/official_pipegen_build/model_stage/yolov8n.fp32.plan)<br>[`pipegen_pipeline/official_pipegen_build/model_stage/6-yolo11n-pose/yolo11n-pose.fp32.plan`](pipegen_pipeline/official_pipegen_build/model_stage/6-yolo11n-pose/yolo11n-pose.fp32.plan) | Primary engine: `yolov8n.fp32.plan` (22,299,924 bytes, 248 layers). Pose engine: `yolo11n-pose.fp32.plan` (18,899,516 bytes, 252 layers). Both validated and deserialized via TensorRT Python API on device. |
 | **6** | **Generated Pipeline Runs Successfully** | **VERIFIED** | [`pipegen_pipeline/official_pipegen_build/src1/yolov8_pose_parallel/yolov8_pose.py`](pipegen_pipeline/official_pipegen_build/src1/yolov8_pose_parallel/yolov8_pose.py)<br>[`scripts/run_pipegen_end_to_end.sh`](scripts/run_pipegen_end_to_end.sh) | PipeGen parallel pipeline runner executes end-to-end inside `craftifaidocker/deepstream:7.1-amd64-v3` container with GPU passthrough, writing annotated video and streaming detection metadata via HTTP POST to `/api/pipegen/ingest`. |
-| **7** | **NVIDIA GPU Inference Empirically Verified** | **VERIFIED** | [`pipegen_pipeline/actual_measured_benchmark.json`](pipegen_pipeline/actual_measured_benchmark.json)<br>[`scripts/benchmark_trtexec.sh`](scripts/benchmark_trtexec.sh) | Real hardware benchmark using NVIDIA `trtexec` (TRT 10.3.0) on RTX 2050 (UUID `GPU-73dbaf81-29a2-56c6-6b94-477600be6bf7`): **185.98 FPS**, **5.29 ms mean latency**, **4.83 ms GPU compute time**, **33.0 MiB VRAM footprint**. |
+| **7** | **NVIDIA GPU Inference Empirically Verified** | **VERIFIED** | [`pipegen_pipeline/actual_measured_benchmark.json`](pipegen_pipeline/actual_measured_benchmark.json)<br>[`scripts/benchmark_trtexec.sh`](scripts/benchmark_trtexec.sh) | Real hardware benchmark using NVIDIA `trtexec` (TRT 10.3.0) on RTX 2050 (UUID `GPU-73dbaf81-29a2-56c6-6b94-477600be6bf7`): YOLOv8n: **194.52 FPS**, **5.06 ms mean latency**, **4.56 ms GPU compute time**, **33.0 MiB VRAM**; YOLO11n-Pose: **60.63 FPS**, **16.40 ms mean latency**, **37.0 MiB VRAM**. |
 | **8** | **Speed Report Contains Reproducible Measurements** | **VERIFIED** | [`pipegen_pipeline/speed_report.md`](pipegen_pipeline/speed_report.md) | Comprehensive report detailing measurement methodology, latency percentiles (min, median, p90, p95, p99, max), power consumption (30.29 W), thermal steady state (56°C), and CPU baseline comparison. |
 | **9** | **Video Demonstration Supports Claims** | **VERIFIED** | [`assets/annotated_pipeline_run.mp4`](assets/annotated_pipeline_run.mp4)<br>[`assets/workplace_safety_demo.mp4`](assets/workplace_safety_demo.mp4) | Verified video processed through running pipeline with bounding boxes, keypoints, and safety zones. Distinguishes sample video inference from live camera `/dev/video0`. |
 | **10** | **Actionable Structured JSON Output Verified** | **VERIFIED** | [`sentinel_core/models.py`](sentinel_core/models.py)<br>[`tests/test_incident_schema.py`](tests/test_incident_schema.py) | Pydantic v2 schema-compliant incident events containing ISO-8601 timestamps, zone identifiers, confidence scores, bounding boxes, foot contact coordinates, risk levels, and dwell time tracking. |
@@ -32,28 +32,46 @@
 
 ## Reproduction Commands
 
-### 1. Run Automated Test Suite (22 Tests)
+### 1. Acquire Models & Compile Native TensorRT Engines (Local GPU)
 ```bash
-wsl -d Ubuntu bash -c "cd '/mnt/c/Users/avira/Desktop/New folder (2)' && /home/aviral/sentinel_env/bin/pytest tests/ -v"
+# Verify/download ONNX models
+bash scripts/setup_models.sh
+
+# Compile hardware-matched TensorRT .plan engines (requires NVIDIA GPU & Docker)
+bash scripts/compile_engines.sh
 ```
 
-### 2. Run trtexec GPU Benchmark on Target Hardware
+### 2. Run Automated Test Suite (22 Tests)
 ```bash
-wsl -d Ubuntu bash -c "cd '/mnt/c/Users/avira/Desktop/New folder (2)' && bash scripts/benchmark_trtexec.sh"
+pytest tests/ -v
 ```
 
-### 3. Build Frontend Production Bundle
-```powershell
+### 3. Run trtexec GPU Benchmark on Target Hardware
+```bash
+# Benchmark YOLOv8n detector
+bash scripts/benchmark_trtexec.sh
+
+# Benchmark YOLO11n-pose estimator
+bash scripts/benchmark_pose_trtexec.sh
+```
+
+### 4. Build Frontend Production Bundle
+```bash
 cd frontend
 npm run build
 ```
 
-### 4. Start Backend & Dashboard
+### 5. Start Backend & Dashboard
 ```bash
 # Terminal 1: Backend
-wsl -d Ubuntu bash -c "cd '/mnt/c/Users/avira/Desktop/New folder (2)' && /home/aviral/sentinel_env/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000"
+uvicorn backend.main:app --host 0.0.0.0 --port 8000
 
 # Terminal 2: Frontend
 cd frontend
 npm run dev
+```
+
+### 6. Run Official PipeGen GPU Inference Pipeline
+```bash
+bash scripts/run_pipegen_end_to_end.sh
 ```

@@ -79,12 +79,17 @@ class PipeGenAdapter:
         if class_name.lower() not in ("person", "pedestrian", "worker", "human") and class_id != 0:
             return None
 
+        det_point = raw_obj.get("detection_point")
+        contact_source = raw_obj.get("contact_source", "bbox_bottom_center")
+
         return Detection(
             track_id=int(track_id) if track_id is not None else None,
             class_id=class_id,
             class_name=class_name,
             confidence=max(0.0, min(1.0, conf)),
             bounding_box=bbox,
+            detection_point=det_point,
+            contact_source=contact_source,
             raw_metadata=raw_obj
         )
 

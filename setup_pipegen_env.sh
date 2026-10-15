@@ -23,15 +23,23 @@ nvidia-ctk runtime configure --runtime=docker
 systemctl daemon-reload || true
 systemctl restart docker || service docker restart
 
-usermod -aG docker aviral
+TARGET_USER="${SUDO_USER:-$USER}"
+TARGET_HOME=$(getent passwd "$TARGET_USER" | cut -d: -f6)
+TARGET_HOME="${TARGET_HOME:-$HOME}"
+
+usermod -aG docker "$TARGET_USER" || true
 
 echo "=== STEP 4: Verifying Docker and GPU access ==="
 docker info | grep -i "Runtimes" || true
 
 echo "=== STEP 5: Installing PipeGen 0.5.1 ==="
-dpkg -i /mnt/c/Users/avira/Downloads/PipeGen_0.5.1_amd64.deb
-chown -R aviral:aviral /opt/PipeGen
-mkdir -p /home/aviral/.pipegen
-chown -R aviral:aviral /home/aviral/.pipegen
+if [ -f "/opt/PipeGen/PipeGenApp" ]; then
+    echo "PipeGen already installed at /opt/PipeGen"
+elif [ -f "$1" ]; then
+    dpkg -i "$1"
+fi
+chown -R "$TARGET_USER:$TARGET_USER" /opt/PipeGen || true
+mkdir -p "$TARGET_HOME/.pipegen"
+chown -R "$TARGET_USER:$TARGET_USER" "$TARGET_HOME/.pipegen" || true
 
 echo "=== Setup completed successfully! ==="
