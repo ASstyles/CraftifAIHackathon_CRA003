@@ -112,9 +112,35 @@ npm run dev
 ```
 Open **`http://localhost:5173/`** in your browser to launch the SentinelVision operations dashboard.
 
+### Step 5: Run Official PipeGen GPU Inference Pipeline
+To execute the verified DeepStream 7.1 container pipeline against the workplace safety video feed and stream detections directly into the FastAPI backend:
+```bash
+wsl bash "/mnt/c/Users/avira/Desktop/New folder (2)/scripts/run_pipegen_end_to_end.sh"
+```
+
 ---
 
-## 6. Actionable Event JSON Schema
+## 6. REST & Real-Time Streaming API Reference
+
+The SentinelVision FastAPI backend exposes a high-performance REST and SSE API:
+
+| Endpoint | Method | Description | Content-Type |
+|---|---|---|---|
+| `/api/status` | `GET` | Overall pipeline status, PipeGen container readiness, GPU telemetry (RTX 2050), and active mode. | `application/json` |
+| `/api/incidents` | `GET` | List recent safety violations with timestamps, bounding boxes, and dwell durations. | `application/json` |
+| `/api/incidents/stats` | `GET` | Summary statistics of total incidents, active intrusions, and violation breakdown. | `application/json` |
+| `/api/zones` | `GET` | Retrieve all configured restricted hazard zones with polygon coordinates. | `application/json` |
+| `/api/zones` | `POST` | Create or update a restricted zone boundary with custom risk levels and cooldowns. | `application/json` |
+| `/api/zones/{zone_id}` | `DELETE` | Delete an existing restricted zone. | `application/json` |
+| `/api/metrics` | `GET` | Real-time performance telemetry: pure inference latency (ms), FPS, and GPU utilization. | `application/json` |
+| `/api/mode` | `POST` | Toggle between `live` (PipeGen GPU inference) and `demo` (reproducible test fixture). | `application/json` |
+| `/api/pipegen/ingest` | `POST` | High-throughput webhook receiving DeepStream/PipeGen detection metadata. | `application/json` |
+| `/api/stream/feed` | `GET` | Live annotated MJPEG video feed with real-time zone boundary and worker overlays. | `multipart/x-mixed-replace` |
+| `/api/stream/events` | `GET` | Server-Sent Events (SSE) pushing real-time incident notifications to the dashboard. | `text/event-stream` |
+
+---
+
+## 7. Actionable Event JSON Schema
 
 Every detected intrusion produces a standardized, machine-readable JSON payload:
 
@@ -142,7 +168,7 @@ Every detected intrusion produces a standardized, machine-readable JSON payload:
 
 ---
 
-## 7. Performance Benchmarks
+## 8. Performance Benchmarks
 
 ### A. Empirical GPU Inference (NVIDIA GeForce RTX 2050)
 Measured directly on the target hardware using NVIDIA `trtexec` (TensorRT 10.3.0) and PipeGen compiler telemetry:
@@ -166,9 +192,9 @@ Measured using high-resolution monotonic timer (`time.perf_counter`) over 300 fr
 
 ---
 
-## 8. Presentation & Demonstration Flow
+## 9. Presentation & Demonstration Flow
 
-1. **Dashboard Overview:** Displays live telemetry (RTX 2050 VRAM, 54°C core temp, PipeGen v0.5.1 core status).
+1. **Dashboard Overview:** Displays live telemetry (RTX 2050 VRAM, 56°C core temp, PipeGen v0.5.1 core status).
 2. **Video Stream Monitoring:** Shows workers operating near marked safety corridors.
 3. **Intrusion Simulation:** Worker steps across the safety boundary into Zone 1 (Robotic Arm Perimeter).
 4. **Immediate Violation Alert:** Pulsing red hazard banner activates; foot contact point highlights on the floor plane.
@@ -177,7 +203,15 @@ Measured using high-resolution monotonic timer (`time.perf_counter`) over 300 fr
 
 ---
 
-## 9. License & Hackathon Notice
+## 10. Troubleshooting & Diagnostics
+
+- **Docker GPU Access:** If `docker run --gpus all` reports `could not select device driver`, run `sudo nvidia-ctk runtime configure --runtime=docker && sudo systemctl restart docker`.
+- **WSLg X11 Display:** If PipeGen GUI does not render, ensure `DISPLAY=:0` is exported and run `xhost +local:` inside WSL.
+- **Port Conflicts:** The backend runs on port `8000` and frontend on `5173`. Ensure these ports are unblocked or update `VITE_API_URL` accordingly.
+
+---
+
+## 11. License & Hackathon Notice
 
 Developed for the **CraftifAI Physical AI Hackathon — Track A: PipeGen**.  
 *Disclaimer: This prototype demonstrates AI pipeline generation, compilation, and safety logic. It does not replace certified industrial hardware interlocks (e.g. SIL-3 / ISO 13849 light curtains).*

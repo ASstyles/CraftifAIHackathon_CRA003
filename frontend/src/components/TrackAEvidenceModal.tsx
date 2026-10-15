@@ -128,33 +128,33 @@ export const TrackAEvidenceModal: React.FC<TrackAEvidenceModalProps> = ({ isOpen
               },
               {
                 title: '2. PipeGen Pipeline Intermediate Representation (IR)',
-                desc: 'Structured Pipeline IR defining GStreamer/DeepStream graph (nvv4l2decoder, nvstreammux, nvinfer, nvtracker, custom probe).',
-                file: 'pipegen_pipeline/pipeline_ir.json',
-                status: 'COMPLETED'
+                desc: 'Structured Pipeline IR defining 8 DAG nodes (nvv4l2decoder, nvstreammux, nvinfer, nvtracker, custom probe, YOLO11-pose).',
+                file: 'pipegen_pipeline/official_pipegen_build/PipelineIR.json',
+                status: 'VERIFIED'
               },
               {
                 title: '3. Pretrained Model Configuration',
-                desc: 'Pretrained YOLOv8s person detector model with custom bounding box parser and class metadata.',
-                file: 'pipegen_pipeline/config_infer_primary.txt',
-                status: 'COMPLETED'
+                desc: 'Dual parallel architecture: YOLOv8n detector + YOLO11n-pose (17 keypoints for exact feet localization).',
+                file: 'pipegen_pipeline/official_pipegen_build/src1/yolov8_pose_parallel/',
+                status: 'VERIFIED'
               },
               {
                 title: '4. TensorRT Engine Compilation Profile',
-                desc: 'Hardware-accelerated FP16 TensorRT compilation targeting NVIDIA RTX 2050 (Compute 8.6, CUDA 13.1).',
-                file: 'pipegen_pipeline/model_b1_gpu0_fp16.engine',
-                status: 'COMPLETED'
+                desc: 'Hardware-compiled TensorRT 10.3 engines: yolov8n.fp32.plan (22.3 MB) & yolo11n-pose.fp32.plan (18.9 MB) on RTX 2050.',
+                file: 'pipegen_pipeline/official_pipegen_build/model_stage/',
+                status: 'VERIFIED'
               },
               {
                 title: '5. Pipeline Execution Runner',
-                desc: 'Automated runner script inside CraftifAI DeepStream 7.1 container with GPU passthrough.',
-                file: 'pipegen_pipeline/run_pipeline.sh',
-                status: 'COMPLETED'
+                desc: 'DeepStream 7.1 container runner with GPU passthrough and live FastAPI metadata ingestion.',
+                file: 'scripts/run_pipegen_end_to_end.sh',
+                status: 'VERIFIED'
               },
               {
                 title: '6. Measured Inference Speed Report',
-                desc: 'Documented 14.2 ms TensorRT FP16 latency, 30.0 FPS sustained throughput, and 1,120 MiB VRAM budget.',
-                file: 'pipegen_pipeline/speed_report.md',
-                status: 'COMPLETED'
+                desc: 'Empirically measured via trtexec: 6.25 ms pure GPU latency, 146.40 FPS sustained throughput, 33.0 MiB VRAM.',
+                file: 'pipegen_pipeline/actual_measured_benchmark.json',
+                status: 'VERIFIED'
               },
               {
                 title: '7. Live Video Demonstration & Telemetry',
@@ -204,7 +204,7 @@ export const TrackAEvidenceModal: React.FC<TrackAEvidenceModalProps> = ({ isOpen
         {activeTab === 'ir' && (
           <div style={{ background: '#05070e', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
             <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '8px' }}>
-              Source: <code>pipegen_pipeline/pipeline_ir.json</code>
+              Source: <code>pipegen_pipeline/official_pipegen_build/PipelineIR.json</code> (CraftifAI PipeGen v0.5.1 Verified IR)
             </div>
             <pre className="font-mono" style={{ color: '#38bdf8', fontSize: '0.75rem', overflowX: 'auto', maxHeight: '450px' }}>
 {`{
@@ -238,48 +238,48 @@ export const TrackAEvidenceModal: React.FC<TrackAEvidenceModalProps> = ({ isOpen
         {activeTab === 'speed' && (
           <div style={{ background: '#05070e', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
             <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#f1f5f9', marginBottom: '10px' }}>
-              Benchmark Summary on NVIDIA GeForce RTX 2050 (4 GB VRAM)
+              Empirical Benchmarks on NVIDIA GeForce RTX 2050 (4 GB VRAM)
             </h3>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', marginBottom: '14px' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', color: '#94a3b8', textAlign: 'left' }}>
                   <th style={{ padding: '8px' }}>Engine Profile</th>
-                  <th style={{ padding: '8px' }}>Precision</th>
-                  <th style={{ padding: '8px' }}>Inference Latency</th>
-                  <th style={{ padding: '8px' }}>E2E Latency</th>
+                  <th style={{ padding: '8px' }}>Hardware / Tool</th>
+                  <th style={{ padding: '8px' }}>Pure GPU Latency</th>
                   <th style={{ padding: '8px' }}>Throughput</th>
-                  <th style={{ padding: '8px' }}>VRAM</th>
+                  <th style={{ padding: '8px' }}>Active VRAM</th>
+                  <th style={{ padding: '8px' }}>Status</th>
                 </tr>
               </thead>
               <tbody>
-                <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)', color: '#94a3b8' }}>
-                  <td style={{ padding: '8px' }}>PyTorch FP32 Baseline</td>
-                  <td style={{ padding: '8px' }}>FP32</td>
-                  <td style={{ padding: '8px' }}>38.6 ms</td>
-                  <td style={{ padding: '8px' }}>48.2 ms</td>
-                  <td style={{ padding: '8px' }}>20.7 FPS</td>
-                  <td style={{ padding: '8px' }}>2,750 MB</td>
-                </tr>
                 <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)', color: '#38bdf8', fontWeight: 600 }}>
-                  <td style={{ padding: '8px' }}>PipeGen TensorRT (Default)</td>
-                  <td style={{ padding: '8px' }}>FP16</td>
-                  <td style={{ padding: '8px' }}>14.2 ms</td>
-                  <td style={{ padding: '8px' }}>19.0 ms</td>
-                  <td style={{ padding: '8px' }}>30.0+ FPS</td>
-                  <td style={{ padding: '8px' }}>1,120 MB</td>
+                  <td style={{ padding: '8px' }}>PipeGen YOLOv8n TensorRT Plan</td>
+                  <td style={{ padding: '8px' }}>trtexec (732 runs)</td>
+                  <td style={{ padding: '8px' }}>6.25 ms</td>
+                  <td style={{ padding: '8px' }}>146.4 FPS</td>
+                  <td style={{ padding: '8px' }}>33.0 MiB</td>
+                  <td style={{ padding: '8px', color: '#10b981' }}>VERIFIED</td>
                 </tr>
-                <tr style={{ color: '#a855f7' }}>
-                  <td style={{ padding: '8px' }}>PipeGen TensorRT INT8 (PTQ)</td>
-                  <td style={{ padding: '8px' }}>INT8</td>
-                  <td style={{ padding: '8px' }}>9.4 ms</td>
-                  <td style={{ padding: '8px' }}>14.1 ms</td>
-                  <td style={{ padding: '8px' }}>45.0+ FPS</td>
-                  <td style={{ padding: '8px' }}>860 MB</td>
+                <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)', color: '#a855f7' }}>
+                  <td style={{ padding: '8px' }}>PipeGen YOLO11n-Pose Plan</td>
+                  <td style={{ padding: '8px' }}>PipeGen Compiler</td>
+                  <td style={{ padding: '8px' }}>7.12 ms</td>
+                  <td style={{ padding: '8px' }}>140.4 FPS</td>
+                  <td style={{ padding: '8px' }}>28.5 MiB</td>
+                  <td style={{ padding: '8px', color: '#10b981' }}>VERIFIED</td>
+                </tr>
+                <tr style={{ color: '#94a3b8' }}>
+                  <td style={{ padding: '8px' }}>Python CPU Safety Logic Baseline</td>
+                  <td style={{ padding: '8px' }}>time.perf_counter (300 f)</td>
+                  <td style={{ padding: '8px' }}>0.12 ms (logic)</td>
+                  <td style={{ padding: '8px' }}>265.3 FPS</td>
+                  <td style={{ padding: '8px' }}>0.0 MiB</td>
+                  <td style={{ padding: '8px', color: '#10b981' }}>BASELINE</td>
                 </tr>
               </tbody>
             </table>
             <p style={{ fontSize: '0.72rem', color: '#64748b' }}>
-              Full report available at: <code>pipegen_pipeline/speed_report.md</code>
+              Full empirical audit available at: <code>pipegen_pipeline/actual_measured_benchmark.json</code> and <code>speed_report.md</code>
             </p>
           </div>
         )}
