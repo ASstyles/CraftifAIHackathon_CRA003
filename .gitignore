@@ -24,6 +24,8 @@ build/
 .pipegen-state/
 *.deb
 *.engine
+*.plan
+*.cache
 *.onnx
 *.weights
 

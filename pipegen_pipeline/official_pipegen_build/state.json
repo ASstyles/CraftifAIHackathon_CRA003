@@ -1,0 +1,2134 @@
+{
+  "Req": {
+    "enabled": true,
+    "completed": true,
+    "started_at": 1792083313.5766728,
+    "chat_history": [
+      {
+        "agent": "",
+        "user": "I want parallel object detection and pose estimation running together. Use my webcam and display boxes and skeletons together."
+      },
+      {
+        "agent": "You want object detection and pose estimation to run in parallel on one webcam, with boxes and skeletons combined in a live display. I need to know what detection should find and whose pose to estimate.\n\nA few details change how this is built; answer them below, or say proceed to keep the defaults.",
+        "user": "A few details first: kept defaults",
+        "req_form": {
+          "form": {
+            "error": "",
+            "errors": {},
+            "id": "clarify-1",
+            "kind": "clarify",
+            "notes": [],
+            "questions": [
+              {
+                "allow_other": false,
+                "default": null,
+                "filter": "",
+                "help": "",
+                "key": "subjects",
+                "label": "What should detection find, and whose pose should be estimated?",
+                "max": null,
+                "min": null,
+                "options": [],
+                "placeholder": "",
+                "required": true,
+                "step": null,
+                "type": "text",
+                "unit": "",
+                "value": null
+              }
+            ],
+            "secondary_label": "Use defaults",
+            "step": {
+              "index": 1,
+              "label": "Describe",
+              "of": 9
+            },
+            "submit_label": "Continue",
+            "subtitle": "Only what changes how this pipeline is built. Anything left open keeps its default.",
+            "title": "A few details first"
+          },
+          "values": {
+            "answers": {
+              "subjects": ""
+            }
+          }
+        }
+      },
+      {
+        "agent": "I\u2019ll use person detection and estimate the detected people\u2019s poses, showing boxes and skeletons together on the webcam display.\n\nCheck the inputs below and confirm them.",
+        "user": "Inputs: input1 \u00b7 webcam \u00b7 USB camera \u00b7 /dev/video0",
+        "req_form": {
+          "form": {
+            "count": {
+              "known": true,
+              "label": "How many inputs will the pipeline read?",
+              "max": 16,
+              "min": 1,
+              "value": 1
+            },
+            "error": "",
+            "errors": {},
+            "id": "inputs-2",
+            "items": [
+              {
+                "fields": [],
+                "id": "input1",
+                "kind": "usb camera",
+                "probe": "",
+                "role": "webcam",
+                "tasks": [
+                  "object detection",
+                  "pose estimation"
+                ],
+                "values": {
+                  "url": "/dev/video0"
+                }
+              }
+            ],
+            "kind": "inputs",
+            "kinds": [
+              {
+                "description": "A recorded video on this machine",
+                "fields": [
+                  {
+                    "allow_other": false,
+                    "default": null,
+                    "filter": "Videos (*.avi *.m4v *.mkv *.mov *.mp4 *.mpeg *.mpg *.ts *.webm)",
+                    "help": "",
+                    "key": "url",
+                    "label": "Video file",
+                    "max": null,
+                    "min": null,
+                    "options": [],
+                    "placeholder": "",
+                    "required": true,
+                    "step": null,
+                    "type": "file",
+                    "unit": "",
+                    "value": null
+                  }
+                ],
+                "icon": "video",
+                "label": "Video file",
+                "value": "video file"
+              },
+              {
+                "description": "A recorded image on this machine",
+                "fields": [
+                  {
+                    "allow_other": false,
+                    "default": null,
+                    "filter": "Images (*.jpg *.jpeg *.png *.bmp)",
+                    "help": "",
+                    "key": "url",
+                    "label": "Image file",
+                    "max": null,
+                    "min": null,
+                    "options": [],
+                    "placeholder": "",
+                    "required": true,
+                    "step": null,
+                    "type": "file",
+                    "unit": "",
+                    "value": null
+                  }
+                ],
+                "icon": "image",
+                "label": "Image file",
+                "value": "image file"
+              },
+              {
+                "description": "A folder of images on this machine",
+                "fields": [
+                  {
+                    "allow_other": false,
+                    "default": null,
+                    "filter": "",
+                    "help": "",
+                    "key": "url",
+                    "label": "Folder",
+                    "max": null,
+                    "min": null,
+                    "options": [],
+                    "placeholder": "",
+                    "required": true,
+                    "step": null,
+                    "type": "folder",
+                    "unit": "",
+                    "value": null
+                  }
+                ],
+                "icon": "folder",
+                "label": "Image folder",
+                "value": "image folder"
+              },
+              {
+                "description": "A network stream (rtsp://)",
+                "fields": [
+                  {
+                    "allow_other": false,
+                    "default": null,
+                    "filter": "",
+                    "help": "",
+                    "key": "url",
+                    "label": "Stream address",
+                    "max": null,
+                    "min": null,
+                    "options": [],
+                    "placeholder": "rtsp://host:port/path",
+                    "required": true,
+                    "step": null,
+                    "type": "url",
+                    "unit": "",
+                    "value": null
+                  }
+                ],
+                "icon": "stream",
+                "label": "RTSP",
+                "value": "rtsp"
+              },
+              {
+                "description": "A camera connected to this machine",
+                "fields": [
+                  {
+                    "allow_other": false,
+                    "default": null,
+                    "filter": "",
+                    "help": "",
+                    "key": "url",
+                    "label": "Device",
+                    "max": null,
+                    "min": null,
+                    "options": [],
+                    "placeholder": "/dev/video0",
+                    "required": true,
+                    "step": null,
+                    "type": "device",
+                    "unit": "",
+                    "value": null
+                  }
+                ],
+                "icon": "camera",
+                "label": "USB camera",
+                "value": "usb camera"
+              },
+              {
+                "description": "A camera connected to this machine",
+                "fields": [
+                  {
+                    "allow_other": false,
+                    "default": null,
+                    "filter": "",
+                    "help": "",
+                    "key": "url",
+                    "label": "Device",
+                    "max": null,
+                    "min": null,
+                    "options": [],
+                    "placeholder": "/dev/video0",
+                    "required": true,
+                    "step": null,
+                    "type": "device",
+                    "unit": "",
+                    "value": null
+                  }
+                ],
+                "icon": "camera",
+                "label": "CSI camera",
+                "value": "csi camera"
+              },
+              {
+                "description": "A depth camera streaming depth, frames, motion",
+                "fields": [
+                  {
+                    "allow_other": false,
+                    "default": [
+                      "frames"
+                    ],
+                    "filter": "",
+                    "help": "",
+                    "key": "data_kind",
+                    "label": "Streams",
+                    "max": null,
+                    "min": null,
+                    "options": [
+                      {
+                        "label": "depth",
+                        "value": "depth"
+                      },
+                      {
+                        "label": "frames",
+                        "value": "frames"
+                      },
+                      {
+                        "label": "motion",
+                        "value": "motion"
+                      }
+                    ],
+                    "placeholder": "",
+                    "required": true,
+                    "step": null,
+                    "type": "multi",
+                    "unit": "",
+                    "value": null
+                  },
+                  {
+                    "allow_other": false,
+                    "default": "realsense://0",
+                    "filter": "",
+                    "help": "",
+                    "key": "url",
+                    "label": "Device",
+                    "max": null,
+                    "min": null,
+                    "options": [
+                      {
+                        "label": "realsense://0",
+                        "value": "realsense://0"
+                      }
+                    ],
+                    "placeholder": "",
+                    "required": false,
+                    "step": null,
+                    "type": "device",
+                    "unit": "",
+                    "value": null
+                  }
+                ],
+                "icon": "sensor",
+                "label": "RealSense",
+                "value": "realsense"
+              },
+              {
+                "description": "Another kind of source; say what it emits",
+                "fields": [
+                  {
+                    "allow_other": false,
+                    "default": null,
+                    "filter": "",
+                    "help": "",
+                    "key": "description",
+                    "label": "What it is",
+                    "max": null,
+                    "min": null,
+                    "options": [],
+                    "placeholder": "",
+                    "required": true,
+                    "step": null,
+                    "type": "text",
+                    "unit": "",
+                    "value": null
+                  },
+                  {
+                    "allow_other": false,
+                    "default": null,
+                    "filter": "",
+                    "help": "",
+                    "key": "data_kind",
+                    "label": "Data it emits",
+                    "max": null,
+                    "min": null,
+                    "options": [],
+                    "placeholder": "frames",
+                    "required": true,
+                    "step": null,
+                    "type": "text",
+                    "unit": "",
+                    "value": null
+                  },
+                  {
+                    "allow_other": false,
+                    "default": null,
+                    "filter": "",
+                    "help": "",
+                    "key": "url",
+                    "label": "Where it is read from",
+                    "max": null,
+                    "min": null,
+                    "options": [],
+                    "placeholder": "a file path, or scheme://host/path",
+                    "required": true,
+                    "step": null,
+                    "type": "text",
+                    "unit": "",
+                    "value": null
+                  }
+                ],
+                "icon": "other",
+                "label": "Other",
+                "value": "other"
+              }
+            ],
+            "notes": [],
+            "secondary_label": "",
+            "step": {
+              "index": 2,
+              "label": "Inputs",
+              "of": 9
+            },
+            "submit_label": "Confirm inputs",
+            "subtitle": "Prefilled from your description. Check and confirm.",
+            "tasks": [
+              {
+                "id": "object detection",
+                "label": "Object detection"
+              },
+              {
+                "id": "pose estimation",
+                "label": "Pose estimation"
+              }
+            ],
+            "title": "Inputs"
+          },
+          "values": {
+            "count": 1,
+            "items": [
+              {
+                "id": "input1",
+                "kind": "usb camera",
+                "role": "webcam",
+                "tasks": [
+                  "object detection",
+                  "pose estimation"
+                ],
+                "values": {
+                  "url": "/dev/video0"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "agent": "Inputs confirmed: 1.\n\nOutputs taken from your description: out1 \u00b7 live_display \u00b7 layout overlay. Say **review outputs** to change them on a card.\n\nA few camera details will help tune the live pipeline.\n\nA few questions about the scene and camera below: Continue applies what the card shows, Skip adds no step.",
+        "user": "Scene and camera: How is the light? Normal or not sure \u00b7 Does this camera move? Not sure \u00b7 How is it mounted? Level or not sure \u00b7 How big are the targets? Not sure",
+        "req_form": {
+          "form": {
+            "actions": [
+              {
+                "id": "look",
+                "label": "Look at the camera",
+                "message": "check the scene"
+              }
+            ],
+            "error": "",
+            "errors": {},
+            "id": "scene-4",
+            "kind": "scene",
+            "notes": [
+              "input1 is a live camera, so nothing was read from its picture yet. \"Look at the camera\" reads about a second of it on this PC; only measurements in words reach the assistant, never the picture."
+            ],
+            "questions": [
+              {
+                "allow_other": false,
+                "default": null,
+                "filter": "",
+                "help": "Dark or night: adds CLAHE before object detection, pose estimation, only on dark frames. Changes day/night: the same, and it stays off in daylight. Bright background: adds a shadow lift (CLAHE) before object detection, pose estimation when the background is blown out. \u00b7 catalogue \u00a73 Scene \u00b7 Darkness, Bright background",
+                "key": "light__input1",
+                "label": "How is the light?",
+                "max": null,
+                "min": null,
+                "options": [
+                  {
+                    "label": "Normal or not sure",
+                    "value": "normal"
+                  },
+                  {
+                    "label": "Dark or night",
+                    "value": "dark"
+                  },
+                  {
+                    "label": "Changes day/night",
+                    "value": "variable"
+                  },
+                  {
+                    "label": "Bright background",
+                    "value": "backlit"
+                  }
+                ],
+                "placeholder": "",
+                "required": true,
+                "step": null,
+                "type": "choice",
+                "unit": "",
+                "value": "normal"
+              },
+              {
+                "allow_other": false,
+                "default": null,
+                "filter": "",
+                "help": "Fixed: allows speed-ups that need a still camera. Pans or moves: rules out background subtraction, motion gating, frame skipping and the simple tracker. Shakes: rules out frame skipping and the simple tracker. Not sure: treated as not fixed, so no speed-up that needs a still camera. \u00b7 catalogue \u00a74 Camera mount \u00b7 Movement",
+                "key": "motion__input1",
+                "label": "Does this camera move?",
+                "max": null,
+                "min": null,
+                "options": [
+                  {
+                    "label": "Fixed",
+                    "value": "fixed"
+                  },
+                  {
+                    "label": "Pans or moves",
+                    "value": "moves"
+                  },
+                  {
+                    "label": "Shakes",
+                    "value": "shakes"
+                  },
+                  {
+                    "label": "Not sure",
+                    "value": "not_sure"
+                  }
+                ],
+                "placeholder": "",
+                "required": true,
+                "step": null,
+                "type": "choice",
+                "unit": "",
+                "value": "not_sure"
+              },
+              {
+                "allow_other": false,
+                "default": null,
+                "filter": "",
+                "help": "Angled on a wall: keeps the stronger tracker; measuring in metres needs 4 floor points. Straight down: the detector must be trained on top-down views. Upside down: adds Flip 180 before object detection, pose estimation. \u00b7 catalogue \u00a74 Camera mount \u00b7 Position and angle, Top-down view",
+                "key": "mount__input1",
+                "label": "How is it mounted?",
+                "max": null,
+                "min": null,
+                "options": [
+                  {
+                    "label": "Level or not sure",
+                    "value": "level"
+                  },
+                  {
+                    "label": "Angled on a wall",
+                    "value": "wall"
+                  },
+                  {
+                    "label": "Straight down",
+                    "value": "down"
+                  },
+                  {
+                    "label": "Upside down",
+                    "value": "upside_down"
+                  }
+                ],
+                "placeholder": "",
+                "required": true,
+                "step": null,
+                "type": "choice",
+                "unit": "",
+                "value": "level"
+              },
+              {
+                "allow_other": false,
+                "default": null,
+                "filter": "",
+                "help": "Small or far: no frame skipping; advice for the Model stage. \u00b7 catalogue \u00a74 Camera mount \u00b7 Distance and scale",
+                "key": "size__input1",
+                "label": "How big are the targets?",
+                "max": null,
+                "min": null,
+                "options": [
+                  {
+                    "label": "Medium or large",
+                    "value": "large"
+                  },
+                  {
+                    "label": "Small or far",
+                    "value": "small"
+                  },
+                  {
+                    "label": "Not sure",
+                    "value": "not_sure"
+                  }
+                ],
+                "placeholder": "",
+                "required": true,
+                "step": null,
+                "type": "choice",
+                "unit": "",
+                "value": "not_sure"
+              }
+            ],
+            "secondary_label": "Skip",
+            "step": {
+              "index": 4,
+              "label": "Scene",
+              "of": 9
+            },
+            "submit_label": "Continue",
+            "subtitle": "What the camera sees decides which fixes run before the model and before pictures are kept or sent.",
+            "title": "Scene and camera"
+          },
+          "values": {
+            "answers": {
+              "light__input1": "normal",
+              "motion__input1": "not_sure",
+              "mount__input1": "level",
+              "size__input1": "not_sure"
+            }
+          }
+        },
+        "taken_forms": [
+          {
+            "form": {
+              "count": {
+                "known": true,
+                "label": "How many outputs?",
+                "max": 8,
+                "min": 1,
+                "value": 1
+              },
+              "error": "",
+              "errors": {},
+              "id": "outputs-3",
+              "items": [
+                {
+                  "fields": [],
+                  "id": "out1",
+                  "inputs": [
+                    "input1"
+                  ],
+                  "kind": "live_display",
+                  "values": {}
+                }
+              ],
+              "kind": "outputs",
+              "kinds": [
+                {
+                  "description": "A window on this machine",
+                  "fields": [],
+                  "icon": "display",
+                  "label": "Live display",
+                  "value": "live_display"
+                },
+                {
+                  "description": "One window, one tile per input",
+                  "fields": [
+                    {
+                      "allow_other": false,
+                      "default": "1x1",
+                      "filter": "",
+                      "help": "",
+                      "key": "layout",
+                      "label": "Grid (columns x rows)",
+                      "max": null,
+                      "min": null,
+                      "options": [],
+                      "placeholder": "<cols>x<rows>",
+                      "required": false,
+                      "step": null,
+                      "type": "text",
+                      "unit": "",
+                      "value": null
+                    }
+                  ],
+                  "icon": "grid",
+                  "label": "Tiled display",
+                  "value": "tile_display"
+                },
+                {
+                  "description": "Written to a .mp4 file",
+                  "fields": [
+                    {
+                      "allow_other": false,
+                      "default": "/home/aviral/.pipegen/aviralsangal99/b76a3ca5-5761-42e2-b55c-a37885395116/output/output.mp4",
+                      "filter": "Files (*.mp4 *.mkv *.avi *.mov *.webm)",
+                      "help": "",
+                      "key": "url",
+                      "label": "File",
+                      "max": null,
+                      "min": null,
+                      "options": [],
+                      "placeholder": "",
+                      "required": false,
+                      "step": null,
+                      "type": "save",
+                      "unit": "",
+                      "value": null
+                    }
+                  ],
+                  "icon": "video",
+                  "label": "Saved video",
+                  "value": "saved_video"
+                },
+                {
+                  "description": "Annotated frames written to a folder",
+                  "fields": [
+                    {
+                      "allow_other": false,
+                      "default": "/home/aviral/.pipegen/aviralsangal99/b76a3ca5-5761-42e2-b55c-a37885395116/output/frames",
+                      "filter": "",
+                      "help": "",
+                      "key": "url",
+                      "label": "Folder",
+                      "max": null,
+                      "min": null,
+                      "options": [],
+                      "placeholder": "",
+                      "required": false,
+                      "step": null,
+                      "type": "folder",
+                      "unit": "",
+                      "value": null
+                    }
+                  ],
+                  "icon": "images",
+                  "label": "Saved images",
+                  "value": "saved_images"
+                },
+                {
+                  "description": "A network stream (rtsp://)",
+                  "fields": [
+                    {
+                      "allow_other": false,
+                      "default": null,
+                      "filter": "",
+                      "help": "",
+                      "key": "url",
+                      "label": "Stream address",
+                      "max": null,
+                      "min": null,
+                      "options": [],
+                      "placeholder": "rtsp://host:port/path",
+                      "required": true,
+                      "step": null,
+                      "type": "url",
+                      "unit": "",
+                      "value": null
+                    }
+                  ],
+                  "icon": "stream",
+                  "label": "RTSP stream",
+                  "value": "rtsp_stream"
+                },
+                {
+                  "description": "Written to a .json file",
+                  "fields": [
+                    {
+                      "allow_other": false,
+                      "default": "/home/aviral/.pipegen/aviralsangal99/b76a3ca5-5761-42e2-b55c-a37885395116/output/metadata.json",
+                      "filter": "Files (*.json *.jsonl *.txt *.csv)",
+                      "help": "",
+                      "key": "url",
+                      "label": "File",
+                      "max": null,
+                      "min": null,
+                      "options": [],
+                      "placeholder": "",
+                      "required": false,
+                      "step": null,
+                      "type": "save",
+                      "unit": "",
+                      "value": null
+                    }
+                  ],
+                  "icon": "file",
+                  "label": "Metadata file",
+                  "value": "metadata_file"
+                },
+                {
+                  "description": "Messages published to a broker",
+                  "fields": [
+                    {
+                      "allow_other": false,
+                      "default": null,
+                      "filter": "",
+                      "help": "",
+                      "key": "broker",
+                      "label": "Broker",
+                      "max": null,
+                      "min": null,
+                      "options": [],
+                      "placeholder": "host:port",
+                      "required": true,
+                      "step": null,
+                      "type": "text",
+                      "unit": "",
+                      "value": null
+                    },
+                    {
+                      "allow_other": false,
+                      "default": "",
+                      "filter": "",
+                      "help": "Left empty, one is derived from the pipeline.",
+                      "key": "topic",
+                      "label": "Topic",
+                      "max": null,
+                      "min": null,
+                      "options": [],
+                      "placeholder": "",
+                      "required": false,
+                      "step": null,
+                      "type": "text",
+                      "unit": "",
+                      "value": null
+                    }
+                  ],
+                  "icon": "message",
+                  "label": "MQTT",
+                  "value": "mqtt"
+                }
+              ],
+              "notes": [],
+              "review": "review outputs",
+              "secondary_label": "",
+              "step": {
+                "index": 3,
+                "label": "Outputs",
+                "of": 9
+              },
+              "submit_label": "Confirm outputs",
+              "subtitle": "Taken from your description.",
+              "taken": true,
+              "title": "Outputs"
+            },
+            "values": {
+              "count": 1,
+              "items": [
+                {
+                  "id": "out1",
+                  "inputs": [
+                    "input1"
+                  ],
+                  "kind": "live_display",
+                  "values": {}
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "agent": "At the camera (you): use a mode of input1 with the picture size and frame rate its tasks need, and no more: every step after the camera then does less.\n\nDraft v1: **1 input(s)** \u2192 **object detection, pose estimation** \u2192 **live_display**. Correct it here, or press **Finalize flow**.",
+        "user": "finalize the flow",
+        "flow_draft": {
+          "connections": [
+            {
+              "from": "input1",
+              "to": "task:object detection@input1"
+            },
+            {
+              "from": "input1",
+              "to": "task:pose estimation@input1"
+            },
+            {
+              "from": "task:object detection@input1",
+              "to": "out1"
+            },
+            {
+              "from": "task:pose estimation@input1",
+              "to": "out1"
+            }
+          ],
+          "finalized": false,
+          "nodes": [
+            {
+              "id": "input1",
+              "kind": "input",
+              "name": "input1 \u00b7 webcam",
+              "short_description": "usb camera \u00b7 video0"
+            },
+            {
+              "id": "task:object detection@input1",
+              "kind": "task",
+              "name": "object detection",
+              "short_description": "targets: person \u00b7 Run in parallel with pose estimation; display detection boxes."
+            },
+            {
+              "id": "task:pose estimation@input1",
+              "kind": "task",
+              "name": "pose estimation",
+              "short_description": "targets: person \u00b7 Run in parallel with object detection; display skeletons."
+            },
+            {
+              "id": "out1",
+              "kind": "output",
+              "name": "out1 \u00b7 live_display",
+              "short_description": "live_display \u00b7 layout overlay"
+            }
+          ],
+          "version": 1
+        },
+        "actions": [
+          "finalize_flow",
+          "review_outputs",
+          "check_scene"
+        ],
+        "flow_step": {
+          "index": 5,
+          "label": "Flow",
+          "of": 9
+        }
+      },
+      {
+        "agent": "Flow locked. Now the details, one task at a time: 2 of 2 to go.\n\nThe webcam task is set to detect people and display their boxes alongside pose skeletons. You can optionally choose a person-detection confidence threshold; otherwise, the default is 0.5.",
+        "user": "object detection on input1 (webcam): What minimum confidence should person detection use? 0.5 confidence",
+        "task_checklist": {
+          "active": 1,
+          "done": 0,
+          "items": [
+            {
+              "id": 1,
+              "keys": [
+                "object detection@input1"
+              ],
+              "label": "object detection on input1 (webcam)",
+              "status": "active",
+              "summary": ""
+            },
+            {
+              "id": 2,
+              "keys": [
+                "pose estimation@input1"
+              ],
+              "label": "pose estimation on input1 (webcam)",
+              "status": "pending",
+              "summary": ""
+            }
+          ],
+          "of": 2
+        },
+        "req_form": {
+          "form": {
+            "error": "",
+            "errors": {},
+            "id": "task-5",
+            "item": 1,
+            "kind": "task",
+            "notes": [],
+            "questions": [
+              {
+                "allow_other": false,
+                "default": 0.5,
+                "filter": "",
+                "help": "This threshold controls which person detections are displayed.",
+                "key": "confidence_threshold",
+                "label": "What minimum confidence should person detection use?",
+                "max": 1,
+                "min": 0,
+                "options": [],
+                "placeholder": "",
+                "required": false,
+                "step": 0.01,
+                "type": "number",
+                "unit": "confidence",
+                "value": null
+              }
+            ],
+            "round": 1,
+            "secondary_label": "Keep defaults",
+            "step": {
+              "index": 6,
+              "label": "Task details",
+              "of": 9
+            },
+            "submit_label": "Save details",
+            "subtitle": "Only what still matters for this task. Unanswered optional fields keep their defaults.",
+            "summary": "Detect people on the webcam and display detection boxes with pose skeletons; confidence threshold defaults to 0.5.",
+            "task": "object detection on input1 (webcam)",
+            "title": "object detection on input1 (webcam)"
+          },
+          "values": {
+            "answers": {
+              "confidence_threshold": 0.5
+            }
+          }
+        }
+      },
+      {
+        "agent": "Set person detection to a minimum confidence of 0.5, keeping the existing parallel execution and box display.\n\n**object detection on input1 (webcam)** done. Next: **pose estimation on input1 (webcam)**.\n\nPose estimation is set for people on the webcam, running in parallel with detection and displaying skeletons.\n\nAll tasks are detailed. This is the final flow with your conditions; continue to sources, or change something.",
+        "user": "continue to sources",
+        "flow_draft": {
+          "connections": [
+            {
+              "from": "input1",
+              "to": "task:object detection@input1"
+            },
+            {
+              "from": "input1",
+              "to": "task:pose estimation@input1"
+            },
+            {
+              "from": "task:object detection@input1",
+              "to": "out1"
+            },
+            {
+              "from": "task:pose estimation@input1",
+              "to": "out1"
+            }
+          ],
+          "finalized": true,
+          "label": "Final flow \u00b7 with your conditions",
+          "nodes": [
+            {
+              "id": "input1",
+              "kind": "input",
+              "name": "input1 \u00b7 webcam",
+              "short_description": "usb camera \u00b7 video0"
+            },
+            {
+              "id": "task:object detection@input1",
+              "kind": "task",
+              "name": "object detection",
+              "short_description": "targets: person \u00b7 Run in parallel with pose estimation; display detection boxes. Minimum confidence: 0.5."
+            },
+            {
+              "id": "task:pose estimation@input1",
+              "kind": "task",
+              "name": "pose estimation",
+              "short_description": "targets: person \u00b7 Run in parallel with object detection; display skeletons."
+            },
+            {
+              "id": "out1",
+              "kind": "output",
+              "name": "out1 \u00b7 live_display",
+              "short_description": "live_display \u00b7 layout overlay"
+            }
+          ],
+          "version": 2
+        },
+        "actions": [
+          "confirm_flow"
+        ],
+        "task_checklist": {
+          "active": null,
+          "done": 2,
+          "items": [
+            {
+              "id": 1,
+              "keys": [
+                "object detection@input1"
+              ],
+              "label": "object detection on input1 (webcam)",
+              "status": "done",
+              "summary": "Person detection on the webcam runs in parallel with pose estimation, displays boxes, and uses a 0.5 minimum confidence."
+            },
+            {
+              "id": 2,
+              "keys": [
+                "pose estimation@input1"
+              ],
+              "label": "pose estimation on input1 (webcam)",
+              "status": "done",
+              "summary": "Estimate person poses from input1 in parallel with detection and display skeletons."
+            }
+          ],
+          "of": 2
+        },
+        "flow_step": {
+          "index": 5,
+          "label": "Flow",
+          "of": 9
+        }
+      },
+      {
+        "agent": "Code for object detection on input1 (webcam) \u00b7 pose estimation on input1 (webcam): choose a local repository folder or model file, or the catalog, for each task below, or paste a path here.",
+        "user": "object detection on input1 (webcam) \u2192 catalog; pose estimation on input1 (webcam) \u2192 catalog",
+        "req_form": {
+          "form": {
+            "error": "",
+            "errors": {},
+            "groups": [
+              {
+                "choice": "catalog",
+                "field": {
+                  "accept": [
+                    "folder",
+                    "file"
+                  ],
+                  "allow_other": false,
+                  "default": null,
+                  "filter": "Models (*.engine *.onnx *.plan *.pt *.pth *.tflite *.weights)",
+                  "help": "A folder is searched for its models; a model file is used exactly as given.",
+                  "key": "path",
+                  "label": "Repository folder or model file",
+                  "max": null,
+                  "min": null,
+                  "multiple": true,
+                  "options": [],
+                  "placeholder": "/path/to/repository or /path/to/model.onnx",
+                  "required": true,
+                  "step": null,
+                  "type": "path",
+                  "unit": "",
+                  "value": ""
+                },
+                "id": "g1",
+                "keys": [
+                  "object detection@input1"
+                ],
+                "label": "object detection on input1 (webcam)",
+                "path": ""
+              },
+              {
+                "choice": "catalog",
+                "field": {
+                  "accept": [
+                    "folder",
+                    "file"
+                  ],
+                  "allow_other": false,
+                  "default": null,
+                  "filter": "Models (*.engine *.onnx *.plan *.pt *.pth *.tflite *.weights)",
+                  "help": "A folder is searched for its models; a model file is used exactly as given.",
+                  "key": "path",
+                  "label": "Repository folder or model file",
+                  "max": null,
+                  "min": null,
+                  "multiple": true,
+                  "options": [],
+                  "placeholder": "/path/to/repository or /path/to/model.onnx",
+                  "required": true,
+                  "step": null,
+                  "type": "path",
+                  "unit": "",
+                  "value": ""
+                },
+                "id": "g2",
+                "keys": [
+                  "pose estimation@input1"
+                ],
+                "label": "pose estimation on input1 (webcam)",
+                "path": ""
+              }
+            ],
+            "id": "sources-6",
+            "kind": "sources",
+            "model_free": [],
+            "notes": [],
+            "path_field": {
+              "accept": [
+                "folder",
+                "file"
+              ],
+              "allow_other": false,
+              "default": null,
+              "filter": "Models (*.engine *.onnx *.plan *.pt *.pth *.tflite *.weights)",
+              "help": "A folder is searched for its models; a model file is used exactly as given.",
+              "key": "path",
+              "label": "Repository folder or model file",
+              "max": null,
+              "min": null,
+              "multiple": true,
+              "options": [],
+              "placeholder": "/path/to/repository or /path/to/model.onnx",
+              "required": true,
+              "step": null,
+              "type": "path",
+              "unit": "",
+              "value": ""
+            },
+            "precision": {
+              "allow_other": false,
+              "default": "auto",
+              "filter": "",
+              "help": "Used when the model is compiled for this device.",
+              "key": "precision",
+              "label": "Model precision",
+              "max": null,
+              "min": null,
+              "options": [
+                {
+                  "label": "Auto (the compile stage decides)",
+                  "value": "auto"
+                },
+                {
+                  "label": "FP32, full precision reference build",
+                  "value": "fp32"
+                },
+                {
+                  "label": "FP16, half precision; speed and accuracy are measured after the build",
+                  "value": "fp16"
+                },
+                {
+                  "label": "INT8, calibrated on sample frames; speed and accuracy are measured after the build",
+                  "value": "int8"
+                }
+              ],
+              "placeholder": "",
+              "required": false,
+              "step": null,
+              "type": "choice",
+              "unit": "",
+              "value": null
+            },
+            "secondary_label": "",
+            "share": {
+              "label": "One repository covers every task",
+              "value": false
+            },
+            "step": {
+              "index": 7,
+              "label": "Sources",
+              "of": 9
+            },
+            "submit_label": "Continue",
+            "subtitle": "A local repository folder or model file, or ranked suggestions from the catalog, for each task.",
+            "title": "Code sources"
+          },
+          "values": {
+            "groups": [
+              {
+                "choice": "catalog",
+                "id": "g1",
+                "path": ""
+              },
+              {
+                "choice": "catalog",
+                "id": "g2",
+                "path": ""
+              }
+            ],
+            "path": "",
+            "precision": "auto",
+            "share": false
+          }
+        }
+      },
+      {
+        "agent": "Catalog matches for object detection on input1 (webcam) \u00b7 pose estimation on input1 (webcam). Suggested: **A** covers all 2 task(s). Tick the ones to use, or paste a local path.",
+        "user": "A",
+        "benchmark_options": {
+          "options": [
+            {
+              "id": "A",
+              "label": "yolov8_pose_parallel",
+              "description": "Runs person detection and pose estimation concurrently on webcam frames, overlaying boxes and skeletons together.",
+              "similarity": 100,
+              "covers": [
+                "object detection@input1",
+                "pose estimation@input1"
+              ],
+              "suggested": true
+            },
+            {
+              "id": "B",
+              "label": "multi-model-perception-dashboard",
+              "description": "Runs detection and pose estimation in parallel on webcam input, though it presents them in a multi-panel dashboard.",
+              "similarity": 82,
+              "covers": [
+                "object detection@input1",
+                "pose estimation@input1"
+              ],
+              "suggested": false
+            },
+            {
+              "id": "C",
+              "label": "Pose_Estimation",
+              "description": "Supports webcam pose estimation and displays skeletons, but does not provide parallel person detection.",
+              "similarity": 53,
+              "covers": [
+                "pose estimation@input1"
+              ],
+              "suggested": false
+            },
+            {
+              "id": "D",
+              "label": "ONNX-YOLOv8-Object-Detection",
+              "description": "Provides webcam-capable object detection, but does not include pose estimation.",
+              "similarity": 48,
+              "covers": [
+                "object detection@input1"
+              ],
+              "suggested": false
+            }
+          ],
+          "selected": "A",
+          "disabled": true,
+          "multi": true,
+          "selected_ids": [
+            "A"
+          ],
+          "suggestion": {
+            "ids": [
+              "A"
+            ],
+            "of": 2,
+            "tasks_covered": 2
+          }
+        }
+      },
+      {
+        "agent": "- **src1** \u00b7 yolov8_pose_parallel \u2192 object detection on input1 (webcam) \u00b7 pose estimation on input1 (webcam) \u00b7 `yolov8_pose.py` \u00b7 `yolov8n.onnx`, `yolo11n-pose.onnx` (scanned)\n\nAll 13 requirement checks pass.\n\nPress **Generate PIR** to build the pipeline graph. You can still change anything here first.",
+        "checks": {
+          "failed": 0,
+          "groups": [
+            {
+              "failed": 0,
+              "name": "Inputs",
+              "passed": 1,
+              "warned": 0
+            },
+            {
+              "failed": 0,
+              "name": "Tasks",
+              "passed": 3,
+              "warned": 0
+            },
+            {
+              "failed": 0,
+              "name": "Sources",
+              "passed": 6,
+              "warned": 0
+            },
+            {
+              "failed": 0,
+              "name": "Outputs",
+              "passed": 1,
+              "warned": 0
+            },
+            {
+              "failed": 0,
+              "name": "Handoff",
+              "passed": 2,
+              "warned": 0
+            }
+          ],
+          "passed": true,
+          "results": [
+            {
+              "fix": null,
+              "group": "Inputs",
+              "id": "input.input1",
+              "message": "input1: usb camera /dev/video0",
+              "name": "input1 device",
+              "status": "pass"
+            },
+            {
+              "fix": null,
+              "group": "Sources",
+              "id": "classes.src1.object detection@input1",
+              "message": "src1 supports person \u2192 person for object detection@input1.",
+              "name": "object detection@input1 capabilities",
+              "status": "pass"
+            },
+            {
+              "fix": null,
+              "group": "Sources",
+              "id": "classes.src1.pose estimation@input1",
+              "message": "src1 supports person \u2192 Person pose detections decoded to 17 keypoints and rendered as skeletons. for pose estimation@input1.",
+              "name": "pose estimation@input1 capabilities",
+              "status": "pass"
+            },
+            {
+              "fix": "sources",
+              "group": "Tasks",
+              "id": "tasks.covered",
+              "message": "All tasks are covered.",
+              "name": "every task has a source",
+              "status": "pass"
+            },
+            {
+              "fix": null,
+              "group": "Tasks",
+              "id": "task.1.input",
+              "message": "object detection runs on input1",
+              "name": "object detection input",
+              "status": "pass"
+            },
+            {
+              "fix": null,
+              "group": "Tasks",
+              "id": "task.2.input",
+              "message": "pose estimation runs on input1",
+              "name": "pose estimation input",
+              "status": "pass"
+            },
+            {
+              "fix": null,
+              "group": "Sources",
+              "id": "source.src1.root",
+              "message": "src1: /home/aviral/.pipegen/aviralsangal99/b76a3ca5-5761-42e2-b55c-a37885395116/src1/yolov8_pose_parallel",
+              "name": "src1 folder",
+              "status": "pass"
+            },
+            {
+              "fix": "reanalyse",
+              "group": "Sources",
+              "id": "source.src1.entry",
+              "message": "src1: `python yolov8_pose.py --input /dev/video0 --conf 0.5` \u2192 yolov8_pose.py",
+              "name": "src1 run command",
+              "status": "pass"
+            },
+            {
+              "fix": null,
+              "group": "Sources",
+              "id": "source.src1.model.yolov8n.onnx",
+              "message": "src1: yolov8n.onnx reads fine.",
+              "name": "src1 model yolov8n.onnx",
+              "status": "pass"
+            },
+            {
+              "fix": null,
+              "group": "Sources",
+              "id": "source.src1.model.yolo11n-pose.onnx",
+              "message": "src1: yolo11n-pose.onnx reads fine.",
+              "name": "src1 model yolo11n-pose.onnx",
+              "status": "pass"
+            },
+            {
+              "fix": null,
+              "group": "Outputs",
+              "id": "output.out1.destination",
+              "message": "out1: live_display on this machine",
+              "name": "out1 destination",
+              "status": "pass"
+            },
+            {
+              "fix": "ask",
+              "group": "Handoff",
+              "id": "contract",
+              "message": "2 task(s), 1 source(s), 2 model(s).",
+              "name": "handoff contract",
+              "status": "pass"
+            },
+            {
+              "fix": null,
+              "group": "Handoff",
+              "id": "pir.readiness",
+              "message": "The PIR stage can start from the captured evidence.",
+              "name": "PIR readiness",
+              "status": "pass"
+            }
+          ],
+          "version": 1,
+          "warned": 0
+        },
+        "actions": [
+          "check_scene"
+        ],
+        "source_architectures": [
+          {
+            "architecture": {
+              "connections": [
+                {
+                  "from": "n1",
+                  "to": "n2"
+                },
+                {
+                  "from": "n2",
+                  "to": "n5"
+                },
+                {
+                  "from": "n5",
+                  "to": "n3"
+                },
+                {
+                  "from": "n5",
+                  "to": "n4"
+                },
+                {
+                  "from": "n3",
+                  "to": "n6"
+                },
+                {
+                  "from": "n4",
+                  "to": "n6"
+                }
+              ],
+              "nodes": [
+                {
+                  "id": "n1",
+                  "name": "Camera capture",
+                  "short_description": "Reads frames from the USB camera at /dev/video0."
+                },
+                {
+                  "id": "n2",
+                  "name": "Frame preparation",
+                  "short_description": "Prepares each frame for inference using the model wrappers' image resizing and normalization."
+                },
+                {
+                  "id": "n3",
+                  "name": "YOLOv8 object detection",
+                  "short_description": "Runs COCO object detection and decodes class scores and bounding boxes."
+                },
+                {
+                  "id": "n4",
+                  "name": "YOLO11 pose estimation",
+                  "short_description": "Runs person pose inference and decodes keypoints and skeletons."
+                },
+                {
+                  "id": "n5",
+                  "name": "Parallel inference",
+                  "short_description": "Dispatches detection and pose inference concurrently for each frame."
+                },
+                {
+                  "id": "n6",
+                  "name": "Overlay and output",
+                  "short_description": "Draws detection boxes and pose skeletons on frames, then displays them."
+                }
+              ]
+            },
+            "command": "python yolov8_pose.py --input /dev/video0 --conf 0.5",
+            "covers": [
+              "object detection@input1",
+              "pose estimation@input1"
+            ],
+            "id": "src1",
+            "models": [
+              "/home/aviral/.pipegen/aviralsangal99/b76a3ca5-5761-42e2-b55c-a37885395116/src1/yolov8_pose_parallel/models/yolov8n.onnx",
+              "/home/aviral/.pipegen/aviralsangal99/b76a3ca5-5761-42e2-b55c-a37885395116/src1/yolov8_pose_parallel/models/yolo11n-pose.onnx"
+            ],
+            "name": "yolov8_pose_parallel",
+            "source": "benchmark",
+            "summary": "The repository processes frames from a USB camera using a parallel YOLOv8 detection and YOLO11 pose-estimation pipeline. Each frame is resized and normalized by the model wrappers before inference. The detection decoder produces COCO class IDs, confidence scores, and boxes; the pose decoder produces person keypoints for skeleton rendering. Boxes and skeletons are drawn on the same frame and displayed."
+          }
+        ]
+      },
+      {
+        "agent": "Pipeline IR generated successfully. Review the graph above and either **approve** to continue or describe what to change."
+      },
+      {
+        "agent": "Pipeline IR approved. Proceeding to model compilation."
+      },
+      {
+        "agent": "This pipeline runs 2 models \u2014 `yolov8n.onnx`, `yolo11n-pose.onnx`. They are handled one at a time: inspect, compile, then measure \u2014 and only then the next model."
+      },
+      {
+        "agent": "**Model 1 of 2 \u2014 yolov8n.onnx**"
+      },
+      {
+        "agent": "No frames to score. Could not open camera '/dev/video0'. It may be in use by another application, or need permission."
+      },
+      {
+        "agent": "Keeping that engine for `yolov8n.onnx`. Next: `yolo11n-pose.onnx`."
+      },
+      {
+        "agent": "**Model 2 of 2 \u2014 yolo11n-pose.onnx**"
+      },
+      {
+        "agent": "AP @ OKS 0.5:0.95 0.6732 against COCO-WholeBody slice (30 samples) ground truth (unchanged vs the ONNX on the same data) \u00b7 30 sample(s)"
+      }
+    ],
+    "log_history": [
+      "Understanding your requirement",
+      "Defaulted: input1 uses /dev/video0",
+      "Considered: The user described one webcam input; its device identifier was not specified, so the host can collect it.",
+      "Considered: Both requested results require learned visual recognition or pose estimation, so each is recorded as a model task.",
+      "Considered: Boxes and skeletons are requested together in one live display, so the output uses an overlay.",
+      "Understanding \u00b7 a few details",
+      "Understanding your requirement",
+      "Considered: Chose people for both tasks because pose estimation conventionally targets people and the user asked me to decide; this keeps boxes and skeletons aligned.",
+      "Inputs \u00b7 check and confirm",
+      "Considered: The webcam supplies frames for person detection and pose estimation.",
+      "Considered: Lighting, camera movement, mounting angle, and target size can affect these tasks; none have been answered.",
+      "Considered: The output is a live display, not a saved or sent picture, so no privacy question applies.",
+      "Considered: The user asked to keep defaults and did not request a change.",
+      "Scene and camera \u00b7 4 question(s)",
+      "Flow draft ready for your review",
+      "Flow draft \u00b7 waiting for your corrections or Finalize",
+      "Flow finalised; collecting task details",
+      "Detailing object detection on input1 (webcam)",
+      "Task details \u00b7 object detection on input1 (webcam)",
+      "Detailing object detection on input1 (webcam)",
+      "Detailing pose estimation on input1 (webcam)",
+      "Final flow \u00b7 waiting for Continue",
+      "Collecting code sources",
+      "Sources \u00b7 2 task(s) still need code",
+      "Ranking catalog repositories for your tasks",
+      "Sources \u00b7 choose catalog repositories",
+      "Cloning catalog repository yolov8_pose_parallel",
+      "Downloading model: download.sh",
+      "Found 2 ONNX model(s)",
+      "Scanning src1: yolov8_pose_parallel",
+      "Reading yolov8_pose_parallel to configure it for object detection on input1 (webcam) \u00b7 pose estimation on input1 (webcam)",
+      "Checking the requirement against the sources",
+      "Requirements complete",
+      "13 requirement checks passed"
+    ],
+    "completed_at": 1792083527.0395546,
+    "duration_secs": 213.46,
+    "total_secs": 213.46
+  },
+  "PIR": {
+    "enabled": true,
+    "completed": true,
+    "started_at": 1792083534.6293309,
+    "status": "completed",
+    "buttons": {
+      "GeneratePIR": {
+        "enabled": false,
+        "completed": true
+      },
+      "StopPIR": {
+        "enabled": false,
+        "completed": false
+      }
+    },
+    "chat_history": [
+      {
+        "type": "buttons",
+        "buttons": {
+          "GeneratePIR": {
+            "enabled": false,
+            "completed": true
+          },
+          "StopPIR": {
+            "enabled": false,
+            "completed": false
+          }
+        }
+      }
+    ],
+    "task_history": [
+      {
+        "task": "Starting PIR",
+        "completed": true
+      },
+      {
+        "task": "Reading missing source and model details",
+        "completed": true
+      },
+      {
+        "task": "Reading missing source and model details",
+        "completed": true
+      },
+      {
+        "task": "Generating the pipeline graph",
+        "completed": true
+      }
+    ],
+    "PipelineIR": {
+      "connections": [
+        [
+          "p01o_frame",
+          "p02i_frame"
+        ],
+        [
+          "p02o_tensor",
+          "p03i_tensor"
+        ],
+        [
+          "p03o_tensor",
+          "p04i_tensor"
+        ],
+        [
+          "p01o_frame",
+          "p04i_frame"
+        ],
+        [
+          "p01o_frame",
+          "p05i_frame"
+        ],
+        [
+          "p05o_tensor",
+          "p06i_tensor"
+        ],
+        [
+          "p05o_transform",
+          "p07i_transform"
+        ],
+        [
+          "p06o_tensor",
+          "p07i_tensor"
+        ],
+        [
+          "p01o_frame",
+          "p08i_frame"
+        ],
+        [
+          "p04o_detections",
+          "p08i_detections"
+        ],
+        [
+          "p07o_poses",
+          "p08i_poses"
+        ]
+      ],
+      "nodes": [
+        {
+          "description": "Read every available frame from the requested webcam.",
+          "id": 1,
+          "name": "camera",
+          "ports": [
+            {
+              "direction": "output",
+              "format": {
+                "color": "BGR",
+                "encoding": "raw"
+              },
+              "framerate": null,
+              "id": "p01o_frame",
+              "tensor": {
+                "dtype": "uint8",
+                "shape": [
+                  -1,
+                  -1,
+                  3
+                ]
+              }
+            }
+          ],
+          "pseudo_code": "import cv2\n\ncap = cv2.VideoCapture('/dev/video0')\nif not cap.isOpened():\n    raise RuntimeError('Could not open /dev/video0')\ntry:\n    while True:\n        ok, frame = cap.read()\n        if not ok:\n            break\n        emit('p01o_frame', frame)\nfinally:\n    cap.release()",
+          "resolution": null,
+          "type": "input",
+          "url": "v4l2:///dev/video0"
+        },
+        {
+          "color_order": "RGB",
+          "description": "Stretch webcam frames and prepare RGB YOLOv8 tensors.",
+          "id": 2,
+          "mean": null,
+          "normalization": 0.00392156862745098,
+          "offset": null,
+          "pad_value": null,
+          "ports": [
+            {
+              "direction": "input",
+              "format": {
+                "color": "BGR",
+                "encoding": "raw"
+              },
+              "framerate": null,
+              "id": "p02i_frame",
+              "tensor": {
+                "dtype": "uint8",
+                "shape": [
+                  -1,
+                  -1,
+                  3
+                ]
+              }
+            },
+            {
+              "direction": "output",
+              "format": {
+                "color": "RGB",
+                "encoding": "raw"
+              },
+              "framerate": null,
+              "id": "p02o_tensor",
+              "tensor": {
+                "dtype": "fp32",
+                "shape": [
+                  1,
+                  3,
+                  480,
+                  640
+                ]
+              }
+            }
+          ],
+          "pseudo_code": "import cv2\nimport numpy as np\n\ndef process(frame):\n    input_img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)\n    input_img = cv2.resize(input_img, (640, 480))\n    input_img = input_img / 255.0\n    input_img = input_img.transpose(2, 0, 1)\n    input_tensor = input_img[np.newaxis, :, :, :].astype(np.float32)\n    return input_tensor",
+          "resize": [
+            640,
+            480
+          ],
+          "resize_mode": "resize",
+          "scale": 0.00392156862745098,
+          "std": null,
+          "type": "preprocess"
+        },
+        {
+          "batchSize": 1,
+          "description": "Run YOLOv8 object detection on each prepared frame.",
+          "id": 3,
+          "layout": "NCHW",
+          "model": {
+            "inputs": [
+              {
+                "dtype": "fp32",
+                "name": "images",
+                "shape": [
+                  1,
+                  3,
+                  480,
+                  640
+                ]
+              }
+            ],
+            "name": "yolov8n",
+            "outputs": [
+              {
+                "dtype": "fp32",
+                "name": "output0",
+                "shape": [
+                  1,
+                  84,
+                  6300
+                ]
+              }
+            ],
+            "parameter_count": 3151937,
+            "type": "onnx",
+            "url": "file:///home/aviral/.pipegen/aviralsangal99/b76a3ca5-5761-42e2-b55c-a37885395116/src1/yolov8_pose_parallel/models/yolov8n.onnx"
+          },
+          "ports": [
+            {
+              "direction": "input",
+              "format": {
+                "color": "RGB",
+                "encoding": "raw"
+              },
+              "framerate": null,
+              "id": "p03i_tensor",
+              "tensor": {
+                "dtype": "fp32",
+                "shape": [
+                  1,
+                  3,
+                  480,
+                  640
+                ]
+              }
+            },
+            {
+              "direction": "output",
+              "format": {
+                "color": null,
+                "encoding": null
+              },
+              "framerate": null,
+              "id": "p03o_tensor",
+              "tensor": {
+                "dtype": "fp32",
+                "shape": [
+                  1,
+                  84,
+                  6300
+                ]
+              }
+            }
+          ],
+          "pseudo_code": "import onnxruntime as ort\n\nsession = ort.InferenceSession(model_path, providers=ort.get_available_providers())\n\ndef process(input_tensor):\n    return session.run(['output0'], {'images': input_tensor})[0]",
+          "type": "inference"
+        },
+        {
+          "description": "Decode YOLOv8 boxes and retain confident person detections.",
+          "id": 4,
+          "label_file_path": null,
+          "num_classes": 80,
+          "ports": [
+            {
+              "direction": "input",
+              "format": {
+                "color": null,
+                "encoding": null
+              },
+              "framerate": null,
+              "id": "p04i_tensor",
+              "tensor": {
+                "dtype": "fp32",
+                "shape": [
+                  1,
+                  84,
+                  6300
+                ]
+              }
+            },
+            {
+              "direction": "input",
+              "format": {
+                "color": "BGR",
+                "encoding": "raw"
+              },
+              "framerate": null,
+              "id": "p04i_frame",
+              "tensor": {
+                "dtype": "uint8",
+                "shape": [
+                  -1,
+                  -1,
+                  3
+                ]
+              }
+            },
+            {
+              "direction": "output",
+              "format": {
+                "color": null,
+                "encoding": null
+              },
+              "framerate": null,
+              "id": "p04o_detections",
+              "tensor": {
+                "dtype": null,
+                "shape": null
+              }
+            }
+          ],
+          "pseudo_code": "import numpy as np\n\ndef xywh2xyxy(x):\n    y = np.copy(x)\n    y[..., 0] = x[..., 0] - x[..., 2] / 2\n    y[..., 1] = x[..., 1] - x[..., 3] / 2\n    y[..., 2] = x[..., 0] + x[..., 2] / 2\n    y[..., 3] = x[..., 1] + x[..., 3] / 2\n    return y\n\ndef compute_iou(box, boxes):\n    xmin = np.maximum(box[0], boxes[:, 0])\n    ymin = np.maximum(box[1], boxes[:, 1])\n    xmax = np.minimum(box[2], boxes[:, 2])\n    ymax = np.minimum(box[3], boxes[:, 3])\n    intersection_area = np.maximum(0, xmax - xmin) * np.maximum(0, ymax - ymin)\n    box_area = (box[2] - box[0]) * (box[3] - box[1])\n    boxes_area = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])\n    union_area = box_area + boxes_area - intersection_area\n    return intersection_area / union_area\n\ndef nms(boxes, scores, iou_threshold):\n    sorted_indices = np.argsort(scores)[::-1]\n    keep_boxes = []\n    while sorted_indices.size > 0:\n        box_id = sorted_indices[0]\n        keep_boxes.append(box_id)\n        ious = compute_iou(boxes[box_id, :], boxes[sorted_indices[1:], :])\n        keep_indices = np.where(ious < iou_threshold)[0]\n        sorted_indices = sorted_indices[keep_indices + 1]\n    return keep_boxes\n\ndef multiclass_nms(boxes, scores, class_ids, iou_threshold):\n    keep_boxes = []\n    for class_id in np.unique(class_ids):\n        class_indices = np.where(class_ids == class_id)[0]\n        class_keep_boxes = nms(boxes[class_indices, :], scores[class_indices], iou_threshold)\n        keep_boxes.extend(class_indices[class_keep_boxes])\n    return keep_boxes\n\ndef process(raw_output, frame):\n    img_height, img_width = frame.shape[:2]\n    predictions = np.squeeze(raw_output).T\n    scores = np.max(predictions[:, 4:], axis=1)\n    selected = scores > 0.5\n    predictions = predictions[selected, :]\n    scores = scores[selected]\n    if len(scores) == 0:\n        return []\n    class_ids = np.argmax(predictions[:, 4:], axis=1)\n    boxes = predictions[:, :4]\n    boxes = np.divide(boxes, np.array([640, 480, 640, 480]), dtype=np.float32)\n    boxes *= np.array([img_width, img_height, img_width, img_height])\n    boxes = xywh2xyxy(boxes)\n    indices = multiclass_nms(boxes, scores, class_ids, 0.5)\n    return [(boxes[i], float(scores[i]), int(class_ids[i])) for i in indices if class_ids[i] == 0]",
+          "task": "detection",
+          "threshold": 0.5,
+          "top_items": null,
+          "type": "postprocess"
+        },
+        {
+          "color_order": "RGB",
+          "description": "Letterbox webcam frames and preserve pose coordinate transforms.",
+          "id": 5,
+          "mean": null,
+          "normalization": 0.00392156862745098,
+          "offset": null,
+          "pad_value": 114,
+          "ports": [
+            {
+              "direction": "input",
+              "format": {
+                "color": "BGR",
+                "encoding": "raw"
+              },
+              "framerate": null,
+              "id": "p05i_frame",
+              "tensor": {
+                "dtype": "uint8",
+                "shape": [
+                  -1,
+                  -1,
+                  3
+                ]
+              }
+            },
+            {
+              "direction": "output",
+              "format": {
+                "color": "RGB",
+                "encoding": "raw"
+              },
+              "framerate": null,
+              "id": "p05o_tensor",
+              "tensor": {
+                "dtype": "fp32",
+                "shape": [
+                  1,
+                  3,
+                  640,
+                  640
+                ]
+              }
+            },
+            {
+              "direction": "output",
+              "format": {
+                "color": null,
+                "encoding": null
+              },
+              "framerate": null,
+              "id": "p05o_transform",
+              "tensor": {
+                "dtype": null,
+                "shape": null
+              }
+            }
+          ],
+          "pseudo_code": "import cv2\nimport numpy as np\n\ndef process(bgr):\n    h, w = bgr.shape[:2]\n    scale = min(640 / w, 640 / h)\n    nw, nh = int(round(w * scale)), int(round(h * scale))\n    pad_x, pad_y = (640 - nw) // 2, (640 - nh) // 2\n    rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)\n    canvas = np.full((640, 640, 3), 114, np.uint8)\n    canvas[pad_y:pad_y + nh, pad_x:pad_x + nw] = cv2.resize(rgb, (nw, nh))\n    x = np.transpose(canvas.astype(np.float32) / 255.0, (2, 0, 1))[None]\n    return x.astype(np.float32), {'scale': scale, 'pad_x': pad_x, 'pad_y': pad_y}",
+          "resize": [
+            640,
+            640
+          ],
+          "resize_mode": "letterbox",
+          "scale": 0.00392156862745098,
+          "std": null,
+          "type": "preprocess"
+        },
+        {
+          "batchSize": 1,
+          "description": "Run YOLO11 person pose inference independently of detection.",
+          "id": 6,
+          "layout": "NCHW",
+          "model": {
+            "inputs": [
+              {
+                "dtype": "fp32",
+                "name": "images",
+                "shape": [
+                  1,
+                  3,
+                  640,
+                  640
+                ]
+              }
+            ],
+            "name": "yolo11n-pose",
+            "outputs": [
+              {
+                "dtype": "fp32",
+                "name": "output0",
+                "shape": [
+                  1,
+                  56,
+                  8400
+                ]
+              }
+            ],
+            "parameter_count": 2866508,
+            "type": "onnx",
+            "url": "file:///home/aviral/.pipegen/aviralsangal99/b76a3ca5-5761-42e2-b55c-a37885395116/src1/yolov8_pose_parallel/models/yolo11n-pose.onnx"
+          },
+          "ports": [
+            {
+              "direction": "input",
+              "format": {
+                "color": "RGB",
+                "encoding": "raw"
+              },
+              "framerate": null,
+              "id": "p06i_tensor",
+              "tensor": {
+                "dtype": "fp32",
+                "shape": [
+                  1,
+                  3,
+                  640,
+                  640
+                ]
+              }
+            },
+            {
+              "direction": "output",
+              "format": {
+                "color": null,
+                "encoding": null
+              },
+              "framerate": null,
+              "id": "p06o_tensor",
+              "tensor": {
+                "dtype": "fp32",
+                "shape": [
+                  1,
+                  56,
+                  8400
+                ]
+              }
+            }
+          ],
+          "pseudo_code": "import onnxruntime as ort\n\navailable = ort.get_available_providers()\nproviders = ['CUDAExecutionProvider', 'CPUExecutionProvider'] if 'CUDAExecutionProvider' in available else ['CPUExecutionProvider']\nsession = ort.InferenceSession(model_path, providers=providers)\n\ndef process(input_tensor):\n    return session.run(['output0'], {'images': input_tensor})[0]",
+          "type": "inference"
+        },
+        {
+          "description": "Decode person boxes and keypoints with pose NMS.",
+          "id": 7,
+          "label_file_path": null,
+          "num_classes": 1,
+          "ports": [
+            {
+              "direction": "input",
+              "format": {
+                "color": null,
+                "encoding": null
+              },
+              "framerate": null,
+              "id": "p07i_tensor",
+              "tensor": {
+                "dtype": "fp32",
+                "shape": [
+                  1,
+                  56,
+                  8400
+                ]
+              }
+            },
+            {
+              "direction": "input",
+              "format": {
+                "color": null,
+                "encoding": null
+              },
+              "framerate": null,
+              "id": "p07i_transform",
+              "tensor": {
+                "dtype": null,
+                "shape": null
+              }
+            },
+            {
+              "direction": "output",
+              "format": {
+                "color": null,
+                "encoding": null
+              },
+              "framerate": null,
+              "id": "p07o_poses",
+              "tensor": {
+                "dtype": null,
+                "shape": null
+              }
+            }
+          ],
+          "pseudo_code": "import numpy as np\n\ndef iou(a, b):\n    ix1, iy1 = max(a[0], b[0]), max(a[1], b[1])\n    ix2, iy2 = min(a[2], b[2]), min(a[3], b[3])\n    iw, ih = max(0.0, ix2 - ix1), max(0.0, iy2 - iy1)\n    inter = iw * ih\n    ua = (a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - inter\n    return inter / ua if ua > 0 else 0.0\n\ndef process(raw_output, transform):\n    scale = transform['scale']\n    pad_x = transform['pad_x']\n    pad_y = transform['pad_y']\n    o = np.squeeze(raw_output)\n    if o.shape[0] != 56:\n        return []\n    scores = o[4]\n    keep = np.where(scores >= 0.25)[0]\n    if keep.size == 0:\n        return []\n    cx, cy = o[0, keep], o[1, keep]\n    bw, bh = o[2, keep], o[3, keep]\n    fx, fy = (cx - pad_x) / scale, (cy - pad_y) / scale\n    fw, fh = bw / scale, bh / scale\n    x1, y1, x2, y2 = fx - fw / 2, fy - fh / 2, fx + fw / 2, fy + fh / 2\n    kp = o[5:5 + 17 * 3, keep].reshape(17, 3, keep.size)\n    kx = (kp[:, 0, :] - pad_x) / scale\n    ky = (kp[:, 1, :] - pad_y) / scale\n    kc = kp[:, 2, :]\n    dets = [dict(box=(x1[i], y1[i], x2[i], y2[i]), score=float(scores[keep][i]), kx=kx[:, i], ky=ky[:, i], kc=kc[:, i]) for i in range(keep.size)]\n    dets.sort(key=lambda d: d['score'], reverse=True)\n    retained = []\n    for d in dets:\n        if all(iou(d['box'], k['box']) <= 0.45 for k in retained):\n            retained.append(d)\n    return retained",
+          "task": "detection",
+          "threshold": 0.25,
+          "top_items": null,
+          "type": "postprocess"
+        },
+        {
+          "description": "Display detection boxes and pose skeletons together.",
+          "grid": null,
+          "id": 8,
+          "name": "display",
+          "output_type": "single",
+          "ports": [
+            {
+              "direction": "input",
+              "format": {
+                "color": "BGR",
+                "encoding": "raw"
+              },
+              "framerate": null,
+              "id": "p08i_frame",
+              "tensor": {
+                "dtype": "uint8",
+                "shape": [
+                  -1,
+                  -1,
+                  3
+                ]
+              }
+            },
+            {
+              "direction": "input",
+              "format": {
+                "color": null,
+                "encoding": null
+              },
+              "framerate": null,
+              "id": "p08i_detections",
+              "tensor": {
+                "dtype": null,
+                "shape": null
+              }
+            },
+            {
+              "direction": "input",
+              "format": {
+                "color": null,
+                "encoding": null
+              },
+              "framerate": null,
+              "id": "p08i_poses",
+              "tensor": {
+                "dtype": null,
+                "shape": null
+              }
+            }
+          ],
+          "pseudo_code": "import cv2\nimport numpy as np\n\nedges = [(0, 1), (0, 2), (1, 3), (2, 4), (5, 6), (5, 7), (7, 9), (6, 8), (8, 10), (5, 11), (6, 12), (11, 12), (11, 13), (13, 15), (12, 14), (14, 16)]\ncolors = np.random.default_rng(3).uniform(0, 255, size=(80, 3))\nwindow = 'YOLOv8 + Pose (parallel)'\ncv2.namedWindow(window, cv2.WINDOW_NORMAL)\n\ndef process(original_frame, detections, poses):\n    frame = original_frame.copy()\n    for box, score, cid in detections:\n        x1, y1, x2, y2 = box.astype(int)\n        col = tuple(int(c) for c in colors[cid])\n        cv2.rectangle(frame, (x1, y1), (x2, y2), col, 2)\n        label = f'person {int(score * 100)}%'\n        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)\n        yb = max(y1, th + 4)\n        cv2.rectangle(frame, (x1, yb - th - 4), (x1 + tw, yb), col, -1)\n        cv2.putText(frame, label, (x1, yb - 2), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)\n    for d in poses:\n        kx, ky, kc = d['kx'], d['ky'], d['kc']\n        for a, b in edges:\n            if kc[a] >= 0.30 and kc[b] >= 0.30:\n                cv2.line(frame, (int(kx[a]), int(ky[a])), (int(kx[b]), int(ky[b])), (0, 255, 0), 2, cv2.LINE_AA)\n        for k in range(17):\n            if kc[k] >= 0.30:\n                cv2.circle(frame, (int(kx[k]), int(ky[k])), 4, (0, 0, 255), -1, cv2.LINE_AA)\n    cv2.imshow(window, frame)\n    if (cv2.waitKey(1) & 0xFF) in (ord('q'), 27):\n        request_shutdown()\n\n# On shutdown, close the display window.\ncv2.destroyAllWindows()",
+          "resolution": null,
+          "type": "output",
+          "url": null
+        }
+      ]
+    },
+    "revision": "6062e94c1e4e7e352ddc948146385470d6631b6237b7745c68198368c1fe64a1",
+    "completed_at": 1792083598.980397,
+    "duration_secs": 64.35,
+    "total_secs": 285.4
+  },
+  "Model": {
+    "enabled": true,
+    "completed": false,
+    "started_at": 1792083598.980397
+  },
+  "Compiler": {
+    "enabled": false,
+    "completed": false
+  },
+  "Run": {
+    "enabled": false,
+    "completed": false
+  },
+  "project_name": "Parallel Webcam Person Detection and Pose"
+}

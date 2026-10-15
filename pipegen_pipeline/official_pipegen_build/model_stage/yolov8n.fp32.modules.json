@@ -1,0 +1,250 @@
+{
+  "blocks": [
+    {
+      "name": "Init constants and shape meta",
+      "operations": "Scalar constants, shape tensors, reshapes",
+      "precision": "FP32",
+      "time_ms": 0.0,
+      "pct": 0.0,
+      "start_index": 0,
+      "end_index": 14,
+      "layer_count": 15
+    },
+    {
+      "name": "Stem downsample 640x480 -> 320x240",
+      "operations": "Conv(stride-2) + SiLU activation",
+      "precision": "FP32",
+      "time_ms": 0.354662,
+      "pct": 5.55,
+      "start_index": 15,
+      "end_index": 18,
+      "layer_count": 4
+    },
+    {
+      "name": "Backbone stage 1 CSP block (32-ch, 320x240 -> 160x120)",
+      "operations": "Downsample conv + CSP: 1 bottleneck + fusion conv",
+      "precision": "FP32",
+      "time_ms": 0.456715,
+      "pct": 7.14,
+      "start_index": 19,
+      "end_index": 28,
+      "layer_count": 10
+    },
+    {
+      "name": "Backbone stage 2 CSP block (64-ch, 160x120 -> 80x60)",
+      "operations": "Downsample conv + CSP: 2 bottlenecks + fusion conv",
+      "precision": "FP32",
+      "time_ms": 0.533274,
+      "pct": 8.34,
+      "start_index": 29,
+      "end_index": 47,
+      "layer_count": 19
+    },
+    {
+      "name": "Backbone stage 3 CSP block (128-ch, 80x60 -> 40x30)",
+      "operations": "Downsample conv + CSP: 2 bottlenecks + fusion conv",
+      "precision": "FP32",
+      "time_ms": 0.498579,
+      "pct": 7.8,
+      "start_index": 48,
+      "end_index": 67,
+      "layer_count": 20
+    },
+    {
+      "name": "Backbone stage 4 (C3 block, 256-ch 40x30 -> 20x15)",
+      "operations": "Downsample conv + C3: 1 bottleneck + fusion conv",
+      "precision": "FP32",
+      "time_ms": 0.356521,
+      "pct": 5.58,
+      "start_index": 68,
+      "end_index": 82,
+      "layer_count": 15
+    },
+    {
+      "name": "Backbone SPPF neck at lowest stride",
+      "operations": "Conv + 3x maxpool pyramid + conv",
+      "precision": "FP32",
+      "time_ms": 0.199924,
+      "pct": 3.13,
+      "start_index": 83,
+      "end_index": 91,
+      "layer_count": 9
+    },
+    {
+      "name": "PAN neck upsample from 20x15 to 40x30 (merge P5,P4)",
+      "operations": "Upsample + concat + C3-like block + conv",
+      "precision": "FP32",
+      "time_ms": 0.320596,
+      "pct": 5.01,
+      "start_index": 92,
+      "end_index": 105,
+      "layer_count": 14
+    },
+    {
+      "name": "PAN neck upsample from 40x30 to 80x60 (merge P4,P3)",
+      "operations": "Upsample + concat + C3-like block + conv",
+      "precision": "FP32",
+      "time_ms": 0.393883,
+      "pct": 6.16,
+      "start_index": 106,
+      "end_index": 118,
+      "layer_count": 13
+    },
+    {
+      "name": "PAN neck downsample from 80x60 to 40x30 (bottom path)",
+      "operations": "Conv(stride-2) to create deeper path feature",
+      "precision": "FP32",
+      "time_ms": 0.067131,
+      "pct": 1.05,
+      "start_index": 119,
+      "end_index": 119,
+      "layer_count": 1
+    },
+    {
+      "name": "Head classification/regression convs at 80x60 scale",
+      "operations": "Shared convs split into cls/reg branches",
+      "precision": "FP32",
+      "time_ms": 0.776936,
+      "pct": 12.15,
+      "start_index": 120,
+      "end_index": 138,
+      "layer_count": 19
+    },
+    {
+      "name": "80x60 grid generation for anchor-free head",
+      "operations": "Range, add offsets, expand, reshape to grid",
+      "precision": "FP32",
+      "time_ms": 0.131714,
+      "pct": 2.06,
+      "start_index": 139,
+      "end_index": 146,
+      "layer_count": 8
+    },
+    {
+      "name": "PAN neck middle C3 at 40x30",
+      "operations": "C3: 1 bottleneck + fusion conv",
+      "precision": "FP32",
+      "time_ms": 0.214184,
+      "pct": 3.35,
+      "start_index": 147,
+      "end_index": 156,
+      "layer_count": 10
+    },
+    {
+      "name": "PAN neck downsample from 40x30 to 20x15",
+      "operations": "Conv(stride-2) to propagate mid-scale",
+      "precision": "FP32",
+      "time_ms": 0.154733,
+      "pct": 2.42,
+      "start_index": 157,
+      "end_index": 157,
+      "layer_count": 1
+    },
+    {
+      "name": "Head classification/regression convs at 40x30 scale",
+      "operations": "Shared convs split into cls/reg branches",
+      "precision": "FP32",
+      "time_ms": 0.572655,
+      "pct": 8.96,
+      "start_index": 158,
+      "end_index": 182,
+      "layer_count": 25
+    },
+    {
+      "name": "40x30 grid generation for anchor-free head",
+      "operations": "Range, add offsets, expand, reshape to grid",
+      "precision": "FP32",
+      "time_ms": 0.147071,
+      "pct": 2.3,
+      "start_index": 183,
+      "end_index": 189,
+      "layer_count": 7
+    },
+    {
+      "name": "PAN neck deepest C3 at 20x15",
+      "operations": "C3: 1 bottleneck + fusion conv",
+      "precision": "FP32",
+      "time_ms": 0.226295,
+      "pct": 3.54,
+      "start_index": 190,
+      "end_index": 198,
+      "layer_count": 9
+    },
+    {
+      "name": "Head classification/regression convs at 20x15 scale",
+      "operations": "Shared convs split into cls/reg branches",
+      "precision": "FP32",
+      "time_ms": 0.416134,
+      "pct": 6.51,
+      "start_index": 199,
+      "end_index": 218,
+      "layer_count": 20
+    },
+    {
+      "name": "20x15 grid generation for anchor-free head",
+      "operations": "Range, add offsets, expand, reshape to grid",
+      "precision": "FP32",
+      "time_ms": 0.054233,
+      "pct": 0.85,
+      "start_index": 220,
+      "end_index": 225,
+      "layer_count": 6
+    },
+    {
+      "name": "Concatenate multi-scale logits and apply sigmoid",
+      "operations": "Concat class logits (3 scales) + Sigmoid",
+      "precision": "FP32",
+      "time_ms": 0.0,
+      "pct": 0.0,
+      "start_index": 226,
+      "end_index": 226,
+      "layer_count": 1
+    },
+    {
+      "name": "DFL distribution to box offsets",
+      "operations": "Reshape, softmax over bins, 1x1 conv aggregation",
+      "precision": "FP32",
+      "time_ms": 0.167186,
+      "pct": 2.61,
+      "start_index": 227,
+      "end_index": 232,
+      "layer_count": 6
+    },
+    {
+      "name": "Multi-scale grid concat and reshape",
+      "operations": "Concat grid coordinates from 3 scales",
+      "precision": "FP32",
+      "time_ms": 0.035853,
+      "pct": 0.56,
+      "start_index": 233,
+      "end_index": 238,
+      "layer_count": 6
+    },
+    {
+      "name": "Box center/size computation and scaling",
+      "operations": "Elementwise add/sub/div, mul with strides",
+      "precision": "FP32",
+      "time_ms": 0.228481,
+      "pct": 3.57,
+      "start_index": 239,
+      "end_index": 246,
+      "layer_count": 8
+    },
+    {
+      "name": "Final box output reformat",
+      "operations": "Reformat of box tensor to output layout",
+      "precision": "FP32",
+      "time_ms": 0.020276,
+      "pct": 0.32,
+      "start_index": 247,
+      "end_index": 247,
+      "layer_count": 1
+    }
+  ],
+  "source": "reasoner",
+  "architecture": "YOLOv8-style object detector: CSP-like backbone + PAN/FPN neck + DFL-based head with anchor-free grids and post-processing",
+  "total_ms": 6.393486,
+  "layer_count": 248,
+  "warnings": [],
+  "fingerprint": "248:6.393:/model.22/Constant_15_output_0:/model.22/Mul_5_output_0 copy"
+}
