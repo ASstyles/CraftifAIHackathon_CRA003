@@ -101,3 +101,23 @@ def test_pipegen_ingest_endpoint():
     data = res.json()
     assert data["status"] == "processed"
     assert "latency_ms" in data
+    assert data["detections_count"] == 1
+
+
+def test_pipeline_benchmark_endpoint():
+    """Verify retrieval of measured empirical benchmark telemetry."""
+    res = client.get("/api/pipeline/benchmark")
+    assert res.status_code == 200
+    data = res.json()
+    assert "target_hardware" in data
+    assert data["target_hardware"]["gpu_name"] == "NVIDIA GeForce RTX 2050"
+    assert "pipegen_official_tensorrt_gpu_benchmark" in data
+
+
+def test_pipeline_control_endpoints():
+    """Verify pipeline start and stop endpoints."""
+    # Test stop when not running
+    res_stop = client.post("/api/pipeline/stop")
+    assert res_stop.status_code == 200
+    assert "status" in res_stop.json()
+

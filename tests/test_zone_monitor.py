@@ -140,3 +140,85 @@ def test_exit_and_reentry():
     inc_reenter = monitor.process_detections([det_inside], frame_timestamp=3.0)
     assert len(inc_reenter) == 1
     assert inc_reenter[0].dwell_time_seconds == 0.0
+
+
+def test_multiple_persons_same_zone():
+    """Verify that multiple people in the same zone trigger separate incidents."""
+    monitor = ZoneMonitor(source_name="test_feed", load_defaults=False)
+    test_zone = RestrictedZone(
+        zone_id="multi_zone",
+        name="Multi Zone",
+        polygon=[[0.0, 0.0], [500.0, 0.0], [500.0, 500.0], [0.0, 500.0]],
+        cooldown_seconds=5.0
+    )
+    monitor.add_zone(test_zone)
+
+    det1 = Detection(track_id=1, confidence=0.95, bounding_box=[50.0, 50.0, 100.0, 150.0])
+    det2 = Detection(track_id=2, confidence=0.92, bounding_box=[200.0, 200.0, 250.0, 300.0])
+
+    incidents = monitor.process_detections([det1, det2], frame_timestamp=10.0)
+    assert len(incidents) == 2
+    track_ids = {inc.track_id for inc in incidents}
+    assert track_ids == {1, 2}
+
+
+def test_untracked_detection_fallback():
+    """Verify spatial centroid tracking assigns a stable ID when track_id is None."""
+    monitor = ZoneMonitor(source_name="test_feed", load_defaults=False)
+    test_zone = RestrictedZone(
+        zone_id="untracked_zone",
+        name="Untracked Zone",
+        polygon=[[0.0, 0.0], [500.0, 0.0], [500.0, 500.0], [0.0, 500.0]],
+        cooldown_seconds=10.0
+    )
+    monitor.add_zone(test_zone)
+
+    # Frame 1: Detection without track_id
+    det_f1 = Detection(track_id=None, confidence=0.90, bounding_box=[100.0, 100.0, 140.0, 200.0])
+    inc1 = monitor.process_detections([det_f1], frame_timestamp=1.0)
+    assert len(inc1) == 1
+    assigned_id = inc1[0].track_id
+    assert assigned_id is not None
+
+    # Frame 2: Same person moved slightly (10px right) without track_id at t=1.033
+    det_f2 = Detection(track_id=None, confidence=0.91, bounding_box=[110.0, 100.0, 150.0, 200.0])
+    inc2 = monitor.process_detections([det_f2], frame_timestamp=1.033)
+    # Duplicate suppression should prevent new alert, but track state should retain the same assigned_id
+    assert len(inc2) == 0
+    assert assigned_id in monitor.tracks
+
+
+def test_invalid_polygon_boundary():
+    """Verify point_in_polygon returns False for degenerate polygons (< 3 points)."""
+    assert point_in_polygon((10.0, 10.0), []) is False
+    assert point_in_polygon((10.0, 10.0), [[5.0, 5.0]]) is False
+    assert point_in_polygon((10.0, 10.0), [[5.0, 5.0], [15.0, 15.0]]) is False
+
+
+def test_dwell_time_accumulation():
+    """Verify that dwell time accumulates accurately over time."""
+    monitor = ZoneMonitor(source_name="test_feed", load_defaults=False)
+    test_zone = RestrictedZone(
+        zone_id="dwell_zone",
+        name="Dwell Zone",
+        polygon=[[0.0, 0.0], [300.0, 0.0], [300.0, 300.0], [0.0, 300.0]],
+        cooldown_seconds=2.0
+    )
+    monitor.add_zone(test_zone)
+
+    det = Detection(track_id=77, confidence=0.95, bounding_box=[50.0, 50.0, 100.0, 150.0])
+
+    # t = 0.0s -> initial intrusion (dwell_time = 0.0)
+    inc0 = monitor.process_detections([det], frame_timestamp=0.0)
+    assert len(inc0) == 1
+    assert inc0[0].dwell_time_seconds == 0.0
+
+    # t = 1.0s -> within cooldown, suppressed
+    inc1 = monitor.process_detections([det], frame_timestamp=1.0)
+    assert len(inc1) == 0
+
+    # t = 2.5s -> cooldown elapsed (> 2.0s), re-trigger alert with accumulated dwell time
+    inc2 = monitor.process_detections([det], frame_timestamp=2.5)
+    assert len(inc2) == 1
+    assert inc2[0].dwell_time_seconds == 2.5
+

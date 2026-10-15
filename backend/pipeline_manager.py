@@ -25,10 +25,10 @@ class PipelineManager:
     def __init__(self, workspace_dir: str):
         self.workspace_dir = workspace_dir
         self.sample_video_path = os.path.join(workspace_dir, "assets", "workplace_safety_demo.mp4")
-        self.zone_monitor = ZoneMonitor(source_name="workplace_safety_demo.mp4")
+        self.zone_monitor = ZoneMonitor(source_name="workplace_safety_demo.mp4 [DEMO_FIXTURE]")
 
         # Telemetry & State
-        self.mode = "demo"  # Default to high-fidelity demo fixture until PipeGen container run is triggered
+        self.mode = "demo"  # 'demo' (synthetic test fixture) or 'live' (real GPU PipeGen pipeline)
         self.is_running = True
         self.current_fps = 30.0
         self.inference_latency_ms = 14.2
@@ -38,6 +38,11 @@ class PipelineManager:
         self.latest_incident: Optional[SafetyIncident] = None
         self.latest_frame_jpeg: bytes = b""
         self.subscribers: List[asyncio.Queue] = []
+
+        # PipeGen Process Management
+        self.pipegen_process: Optional[subprocess.Popen] = None
+        self.last_pipegen_ingest_time: Optional[float] = None
+        self.latest_live_detections: List[Detection] = []
 
         # Ensure sample video exists
         if not os.path.exists(self.sample_video_path):
@@ -65,19 +70,19 @@ class PipelineManager:
                         "utilization_pct": float(parts[6]),
                         "available": True
                     }
-        except Exception:
+        except Exception as e:
             pass
 
-        # Fallback / WSL default values for RTX 2050
         return {
-            "name": "NVIDIA GeForce RTX 2050 (WSL2)",
-            "driver": "592.82",
-            "memory_total_mb": 4096.0,
-            "memory_used_mb": 420.0,
-            "memory_free_mb": 3676.0,
-            "temperature_c": 54.0,
-            "utilization_pct": 18.0,
-            "available": True
+            "name": "NVIDIA GPU Unavailable",
+            "driver": "N/A",
+            "memory_total_mb": 0.0,
+            "memory_used_mb": 0.0,
+            "memory_free_mb": 0.0,
+            "temperature_c": 0.0,
+            "utilization_pct": 0.0,
+            "available": False,
+            "error": "nvidia-smi query returned no telemetry on current host"
         }
 
     def check_pipegen_container(self) -> Dict[str, Any]:
@@ -85,37 +90,119 @@ class PipelineManager:
         try:
             cmd = ["docker", "ps", "-a", "--filter", "name=craftifai", "--format", "{{.Names}}\t{{.Status}}"]
             res = subprocess.run(cmd, capture_output=True, text=True, timeout=4)
-            running = "craftifai" in res.stdout
+            running = "craftifai" in res.stdout or (self.pipegen_process is not None and self.pipegen_process.poll() is None)
             return {
                 "container_found": running or len(res.stdout.strip()) > 0,
-                "container_status": res.stdout.strip() if res.stdout.strip() else "Stopped / Standby",
+                "container_status": res.stdout.strip() if res.stdout.strip() else ("Active" if running else "Stopped / Standby"),
                 "pipegen_installed": True,
-                "pipegen_version": "0.5.1"
+                "pipegen_version": "0.5.1",
+                "pipeline_process_active": running
             }
         except Exception as e:
             return {
                 "container_found": False,
                 "container_status": f"Docker check: {str(e)}",
                 "pipegen_installed": True,
-                "pipegen_version": "0.5.1"
+                "pipegen_version": "0.5.1",
+                "pipeline_process_active": False
             }
+
+    def start_pipegen_pipeline(self, input_source: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Starts the real PipeGen / DeepStream container inference pipeline in the background.
+        Streams detections directly to the backend via /api/pipegen/ingest.
+        """
+        if self.pipegen_process is not None and self.pipegen_process.poll() is None:
+            return {"status": "already_running", "pid": self.pipegen_process.pid}
+
+        src = input_source or "/workspace/assets/workplace_safety_demo.mp4"
+        cmd = [
+            "docker", "run", "--rm", "--gpus", "all",
+            "--net=host",
+            "-v", f"{self.workspace_dir}:/workspace",
+            "craftifaidocker/deepstream:7.1-amd64-v3",
+            "python3", "/workspace/pipegen_pipeline/official_pipegen_build/src1/yolov8_pose_parallel/yolov8_pose.py",
+            "--input", src,
+            "--output", "/workspace/assets/annotated_pipeline_run.mp4",
+            "--api-ingest", "http://localhost:8000/api/pipegen/ingest",
+            "--no-show",
+            "--loop"
+        ]
+
+        try:
+            self.pipegen_process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            self.mode = "live"
+            self.zone_monitor.source_name = "PipeGen DeepStream GPU Pipeline (Live)"
+            return {"status": "started", "pid": self.pipegen_process.pid, "input": src}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def stop_pipegen_pipeline(self) -> Dict[str, Any]:
+        """Stops the running PipeGen pipeline container process."""
+        if self.pipegen_process is not None:
+            try:
+                self.pipegen_process.terminate()
+                self.pipegen_process.wait(timeout=3)
+            except Exception:
+                try:
+                    self.pipegen_process.kill()
+                except Exception:
+                    pass
+            self.pipegen_process = None
+            return {"status": "stopped"}
+        return {"status": "not_running"}
+
+    def is_pipegen_active(self) -> bool:
+        """Check if PipeGen container process or live ingest stream is active."""
+        if self.pipegen_process is not None and self.pipegen_process.poll() is None:
+            return True
+        if self.last_pipegen_ingest_time and (time.time() - self.last_pipegen_ingest_time < 5.0):
+            return True
+        return False
+
+    def get_benchmark_data(self) -> Dict[str, Any]:
+        """Load empirical measured benchmark data from actual_measured_benchmark.json."""
+        benchmark_file = os.path.join(self.workspace_dir, "pipegen_pipeline", "actual_measured_benchmark.json")
+        if os.path.exists(benchmark_file):
+            try:
+                with open(benchmark_file, "r") as f:
+                    return json.load(f)
+            except Exception as e:
+                return {"error": f"Failed to load benchmark data: {str(e)}"}
+        return {"error": "Benchmark data file not found"}
 
     def get_status(self) -> Dict[str, Any]:
         """Return comprehensive system and pipeline status."""
         gpu = self.get_gpu_status()
         pipegen_status = self.check_pipegen_container()
         counts = self.zone_monitor.get_incident_counts()
+        is_live_ingesting = self.last_pipegen_ingest_time is not None and (time.time() - self.last_pipegen_ingest_time < 5.0)
+
+        # Honest pipeline operational status
+        if self.mode == "live":
+            operational_status = "ACTIVE_GPU_STREAM" if is_live_ingesting else "AWAITING_PIPEGEN_INGESTION"
+        else:
+            operational_status = "DEMO_SYNTHETIC_FIXTURE"
 
         return {
             "pipeline_id": "sentinel_pipegen_track_a",
             "pipeline_name": "SentinelVision Industrial Safety AI Pipeline",
             "pipegen_version": "0.5.1",
             "mode": self.mode,
+            "operational_status": operational_status,
             "pipegen_installed": pipegen_status["pipegen_installed"],
             "container_ready": pipegen_status["container_found"],
             "container_status": pipegen_status["container_status"],
-            "model_architecture": "YOLOv8s-Person / DeepStream PGIE",
-            "tensorrt_engine": "TensorRT 10.x FP16 (CUDA 13.1)",
+            "live_pipeline_active": self.is_pipegen_active(),
+            "last_pipegen_ingest_seconds_ago": round(time.time() - self.last_pipegen_ingest_time, 1) if self.last_pipegen_ingest_time else None,
+            "model_architecture": "YOLOv8n Person Detector + YOLO11n-Pose (Parallel DAG)",
+            "tensorrt_engine": "yolov8n.fp32.plan (22.3 MB, 248 TRT layers, TensorRT 10.3.0)",
+            "pose_engine": "yolo11n-pose.fp32.plan (18.9 MB, 252 TRT layers, TensorRT 10.3.0)",
             "target_hardware": "NVIDIA GeForce RTX 2050 (4 GB VRAM)",
             "current_fps": self.current_fps,
             "inference_latency_ms": self.inference_latency_ms,
@@ -131,6 +218,11 @@ class PipelineManager:
         """Switch between 'live' (real GPU pipeline) and 'demo' (sample test fixture)."""
         if mode in ("live", "demo"):
             self.mode = mode
+            if mode == "demo":
+                self.zone_monitor.source_name = "workplace_safety_demo.mp4 [DEMO_FIXTURE]"
+            else:
+                self.zone_monitor.source_name = "PipeGen DeepStream GPU Pipeline (Live)"
+
 
     async def register_subscriber(self) -> asyncio.Queue:
         """Register a queue to receive real-time incident event pushes."""
@@ -192,7 +284,12 @@ class PipelineManager:
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
         # 3. Draw Watermark & Pipeline Status
-        badge = f"SentinelVision Track A | Mode: {self.mode.upper()} | {self.current_fps:.1f} FPS | {self.inference_latency_ms:.1f} ms"
+        if self.mode == "live":
+            is_active = self.last_pipegen_ingest_time and (time.time() - self.last_pipegen_ingest_time < 5.0)
+            status_text = "STREAMING" if is_active else "AWAITING INGESTION"
+            badge = f"SentinelVision Track A | Mode: LIVE GPU ({status_text}) | {self.current_fps:.1f} FPS | {self.inference_latency_ms:.1f} ms"
+        else:
+            badge = f"SentinelVision Track A | Mode: DEMO (SYNTHETIC FIXTURE) | {self.current_fps:.1f} FPS | {self.inference_latency_ms:.1f} ms"
         cv2.putText(annotated, badge, (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (220, 220, 220), 2)
 
         # Encode to JPEG
@@ -201,8 +298,9 @@ class PipelineManager:
 
     async def run_continuous_pipeline(self):
         """
-        Runs continuous 30 FPS inference in the background.
-        Ensures telemetry, detections, and safety incidents update continuously.
+        Runs continuous 30 FPS display loop in the background.
+        Ensures video monitor, detections, and safety incidents update cleanly
+        without confusing live mode with demo data.
         """
         cap = cv2.VideoCapture(self.sample_video_path)
         frame_idx = 0
@@ -222,15 +320,27 @@ class PipelineManager:
                 await asyncio.sleep(0.033)
                 continue
 
-            detections = simulate_detections_for_frame(frame_idx, total_frames=total_frames)
-            self.active_detections = detections
-            self.total_detections += len(detections)
-            self.total_frames_processed += 1
-
             now = time.time()
-            new_incidents = self.zone_monitor.process_detections(detections, frame_timestamp=now)
-            for inc in new_incidents:
-                await self.broadcast_incident(inc)
+
+            if self.mode == "demo":
+                # Demo Mode: use reproducible test fixture detections
+                detections = simulate_detections_for_frame(frame_idx, total_frames=total_frames)
+                self.active_detections = detections
+                self.total_detections += len(detections)
+                self.total_frames_processed += 1
+                new_incidents = self.zone_monitor.process_detections(detections, frame_timestamp=now)
+                for inc in new_incidents:
+                    await self.broadcast_incident(inc)
+            else:
+                # Live Mode: Detections are ONLY ingested from actual PipeGen inference (/api/pipegen/ingest)
+                is_active = self.last_pipegen_ingest_time and (now - self.last_pipegen_ingest_time < 5.0)
+                if is_active:
+                    detections = self.latest_live_detections
+                    self.active_detections = detections
+                else:
+                    detections = []
+                    self.active_detections = []
+                new_incidents = []
 
             self.latest_frame_jpeg = self.render_annotated_frame(frame, detections, new_incidents)
 
@@ -238,3 +348,4 @@ class PipelineManager:
             await asyncio.sleep(0.033)  # 30 FPS lock
 
         cap.release()
+

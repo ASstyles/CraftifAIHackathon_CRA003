@@ -129,9 +129,14 @@ export const Header: React.FC<HeaderProps> = ({
             }}
           >
             <Video size={15} />
-            <span>{isLive ? 'LIVE GPU PIPELINE' : 'SAMPLE DEMO FIXTURE'}</span>
+            <span>
+              {isLive 
+                ? (status?.operational_status === 'ACTIVE_GPU_STREAM' ? 'LIVE GPU (STREAMING)' : 'LIVE GPU (AWAITING INGESTION)')
+                : 'SAMPLE DEMO FIXTURE'}
+            </span>
             <RefreshCw size={12} style={{ opacity: 0.7 }} />
           </button>
+
 
           {/* Track A Submission Evidence Button */}
           <button

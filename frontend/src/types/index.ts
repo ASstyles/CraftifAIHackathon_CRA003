@@ -40,11 +40,15 @@ export interface PipelineStatus {
   pipeline_name: string;
   pipegen_version: string;
   mode: 'live' | 'demo';
+  operational_status?: string;
   pipegen_installed: boolean;
   container_ready: boolean;
   container_status: string;
+  live_pipeline_active?: boolean;
+  last_pipegen_ingest_seconds_ago?: number | null;
   model_architecture: string;
   tensorrt_engine: string;
+  pose_engine?: string;
   target_hardware: string;
   current_fps: number;
   inference_latency_ms: number;

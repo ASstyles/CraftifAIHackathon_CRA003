@@ -61,9 +61,11 @@ When personnel enter hazardous perimeter zones, SentinelVision instantly evaluat
 | **3. Pretrained Model Selection** | **VERIFIED** | [`pipegen_pipeline/official_pipegen_build/src1/yolov8_pose_parallel/`](pipegen_pipeline/official_pipegen_build/src1/yolov8_pose_parallel/) | Dual parallel architecture: YOLOv8n detector + YOLO11n-pose (17 keypoints for exact feet localization) |
 | **4. TensorRT Engine Compilation** | **VERIFIED** | [`pipegen_pipeline/official_pipegen_build/model_stage/`](pipegen_pipeline/official_pipegen_build/model_stage/) | `yolov8n.fp32.plan` (22.3 MB, 248 TRT layers) & `yolo11n-pose.fp32.plan` (18.9 MB, 252 layers) compiled on RTX 2050 |
 | **5. Container Pipeline Execution** | **VERIFIED** | [`scripts/run_pipegen_end_to_end.sh`](scripts/run_pipegen_end_to_end.sh) | DeepStream 7.1 container run with GPU passthrough and real-time backend API ingestion |
-| **6. Speed & Latency Benchmark Report** | **VERIFIED** | [`pipegen_pipeline/speed_report.md`](pipegen_pipeline/speed_report.md) | Measured via `trtexec`: **6.25 ms pure GPU latency**, **146.4 FPS sustained throughput**, **33 MiB VRAM footprint** |
+| **6. Speed & Latency Benchmark Report** | **VERIFIED** | [`pipegen_pipeline/speed_report.md`](pipegen_pipeline/speed_report.md) | Measured via `trtexec`: **5.29 ms mean latency** (**6.41 ms p95**), **185.98 FPS sustained throughput**, **33 MiB VRAM footprint** |
 | **7. Video Demonstration** | **VERIFIED** | [`assets/annotated_pipeline_run.mp4`](assets/annotated_pipeline_run.mp4) | Processed end-to-end output video with real bounding boxes and pose skeletons |
 | **8. Actionable Output (JSON)** | **VERIFIED** | [`sentinel_core/models.py`](sentinel_core/models.py) | Schema-compliant structured JSON incident dispatch with dwell-time tracking |
+
+*Complete Track A Acceptance Checklist is available at [`TRACK_A_CHECKLIST.md`](TRACK_A_CHECKLIST.md).*
 
 ---
 
@@ -92,15 +94,15 @@ wsl docker info | grep -i "Runtimes"
 ```
 
 ### Step 2: Run Automated Tests
-SentinelVision includes a 16-test unit and integration test suite:
+SentinelVision includes a 22-test unit and integration test suite:
 ```bash
 wsl bash -c "cd '/mnt/c/Users/avira/Desktop/New folder (2)' && /home/aviral/sentinel_env/bin/pytest tests/ -v"
 ```
-*Result: 16 passed (100% test pass rate covering schema validation, suppression, and API).*
+*Result: 22 passed (100% test pass rate covering geometry, ray-casting foot localization, suppression, dwell time, schema, and API).*
 
 ### Step 3: Start the Backend Server
 ```bash
-wsl bash -c "cd '/mnt/c/Users/avira/Desktop/New folder (2)' && /home/aviral/sentinel_env/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload"
+wsl bash -c "cd '/mnt/c/Users/avira/Desktop/New folder (2)' && /home/aviral/sentinel_env/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000"
 ```
 The FastAPI backend starts at `http://localhost:8000`.
 
@@ -134,9 +136,13 @@ The SentinelVision FastAPI backend exposes a high-performance REST and SSE API:
 | `/api/zones/{zone_id}` | `DELETE` | Delete an existing restricted zone. | `application/json` |
 | `/api/metrics` | `GET` | Real-time performance telemetry: pure inference latency (ms), FPS, and GPU utilization. | `application/json` |
 | `/api/mode` | `POST` | Toggle between `live` (PipeGen GPU inference) and `demo` (reproducible test fixture). | `application/json` |
+| `/api/pipeline/start` | `POST` | Launch the real PipeGen / DeepStream container inference pipeline in background. | `application/json` |
+| `/api/pipeline/stop` | `POST` | Stop the running PipeGen pipeline container process. | `application/json` |
+| `/api/pipeline/benchmark` | `GET` | Return measured empirical benchmark metrics for NVIDIA RTX 2050. | `application/json` |
 | `/api/pipegen/ingest` | `POST` | High-throughput webhook receiving DeepStream/PipeGen detection metadata. | `application/json` |
 | `/api/stream/feed` | `GET` | Live annotated MJPEG video feed with real-time zone boundary and worker overlays. | `multipart/x-mixed-replace` |
 | `/api/stream/events` | `GET` | Server-Sent Events (SSE) pushing real-time incident notifications to the dashboard. | `text/event-stream` |
+
 
 ---
 
@@ -172,14 +178,16 @@ Every detected intrusion produces a standardized, machine-readable JSON payload:
 
 ### A. Empirical GPU Inference (NVIDIA GeForce RTX 2050)
 Measured directly on the target hardware using NVIDIA `trtexec` (TensorRT 10.3.0) and PipeGen compiler telemetry:
-- **Target GPU:** NVIDIA GeForce RTX 2050 (Device UUID: `GPU-73dbaf81-29a2-56c6-6b94-477600be6bf7`)
-- **Compiled Engine:** `pipegen_pipeline/official_pipegen_build/model_stage/yolov8n.fp32.plan` (22.3 MB, 248 TRT layers)
-- **Pure TensorRT GPU Inference Latency:** **6.25 ms** (Sum of all 248 layers)
-- **PipeGen ModelStage Reported Mean Latency:** **5.48 ms**
-- **Sustained GPU Throughput:** **146.40 FPS** (732 inferences measured over 5.0s)
-- **Max Compute Throughput:** **160.02 FPS**
-- **Active Model VRAM Footprint:** **33.0 MiB** (0.8% of 4,096 MiB capacity)
-- **Steady-State GPU Core Temperature:** **56°C** (Zero thermal throttling)
+- **Target GPU:** NVIDIA GeForce RTX 2050 Laptop GPU (Device UUID: `GPU-73dbaf81-29a2-56c6-6b94-477600be6bf7`, CC 8.6, 4 GB VRAM)
+- **Compiled Engine:** `pipegen_pipeline/official_pipegen_build/model_stage/yolov8n.fp32.plan` (22.3 MB, 248 TRT layers, FP32)
+- **Mean End-to-End Latency:** **5.29 ms** (Median: **5.01 ms**, p90: **6.16 ms**, p95: **6.41 ms**, p99: **6.81 ms**, Max: **7.80 ms**)
+- **Pure GPU Compute Time:** **4.83 ms** (Min: **4.41 ms**, p95: **5.92 ms**)
+- **PipeGen ModelStage Reported Mean Latency:** **5.48 ms** (~182 FPS, 30.29 W power)
+- **Sustained Throughput:** **185.98 FPS / QPS**
+- **Host-to-Device Transfer:** **0.29 ms** | **Device-to-Host Transfer:** **0.17 ms**
+- **Active Model VRAM Footprint:** **33.0 MiB** (0.8% of 4,096 MiB capacity) | **Execution Context Memory:** **13.9 MiB**
+- **Steady-State GPU Core Temperature:** **50°C – 56°C** (Zero thermal throttling)
+
 
 ### B. Safety Logic & Video Pipeline Baseline (CPU)
 Measured using high-resolution monotonic timer (`time.perf_counter`) over 300 frames:

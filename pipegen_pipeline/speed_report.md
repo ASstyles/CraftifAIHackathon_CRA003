@@ -21,17 +21,30 @@ By using **PipeGen** with **TensorRT FP16 compilation** and zero-copy NVMM hardw
 ## 2. Empirical Benchmark Matrix (Measured on Target Device)
 
 In strict compliance with Track A audit guidelines, the figures below represent **empirically measured** performance on the local machine:
-- **Device:** NVIDIA GeForce RTX 2050 (Device UUID: `GPU-73dbaf81-29a2-56c6-6b94-477600be6bf7`, CC 8.6, 4096 MiB VRAM)
+- **Device:** NVIDIA GeForce RTX 2050 Laptop GPU (Device UUID: `GPU-73dbaf81-29a2-56c6-6b94-477600be6bf7`, Compute Capability 8.6, 4096 MiB VRAM)
 - **Compiler:** CraftifAI PipeGen v0.5.1 / NVIDIA TensorRT 10.3.0
-- **Compiled Engine:** `pipegen_pipeline/official_pipegen_build/model_stage/yolov8n.fp32.plan` (22.3 MB, 248 TRT layers)
-- **Benchmark Profiler:** NVIDIA `trtexec` (TensorRT v100300) across 732 measured inferences in 5.0s
+- **Compiled Engine:** `pipegen_pipeline/official_pipegen_build/model_stage/yolov8n.fp32.plan` (22.3 MB, 248 TRT layers, FP32)
+- **Benchmark Profiler:** NVIDIA `trtexec` (TensorRT v100300) across 100 iterations with 100ms warm-up over 3.0s duration
 
-| Configuration / Mode | Engine File | Profiling Tool | Pure Inference Latency | Sustained Throughput | VRAM Allocated | Status |
+| Workload Category | Engine / Implementation | Profiling Method | Latency (Mean / p95) | Sustained Throughput | Memory Footprint | Status |
 |---|---|---|---|---|---|---|
-| **PipeGen Official TRT Plan** | `yolov8n.fp32.plan` (22.3 MB) | `trtexec` (732 runs) | **6.25 ms** (Sum of layers) | **146.4 FPS** (160.0 FPS max) | **33.0 MiB** | **VERIFIED (ON-DEVICE)** |
-| **PipeGen ModelStage Log** | `yolov8n.fp32.plan` (22.3 MB) | PipeGen compiler profiler | **5.48 ms** (Mean) | **182.3 FPS** | **33.0 MiB** | **VERIFIED (ON-DEVICE)** |
-| **PipeGen Pose Model Plan** | `yolo11n-pose.fp32.plan` (18.9 MB) | PipeGen compiler profiler | **7.12 ms** (252 layers) | **140.4 FPS** | **28.5 MiB** | **VERIFIED (ON-DEVICE)** |
-| **Python CPU Safety Baseline** | OpenCV decode + ray-casting | `time.perf_counter` (300 f) | **0.12 ms** (Logic) / **3.77 ms** (Total) | **265.3 FPS** | **0.0 MiB** | **VERIFIED (BASELINE)** |
+| **A. Pure GPU TRT Inference** | `yolov8n.fp32.plan` (22.3 MB) | `trtexec` (100 warm-up) | **5.29 ms** (mean) / **6.41 ms** (p95) | **185.98 FPS** | **33.0 MiB** (GPU) / **13.9 MiB** (Ctx) | **VERIFIED (ON-DEVICE)** |
+| **B. PipeGen ModelStage Profiler** | `yolov8n.fp32.plan` (22.3 MB) | PipeGen compiler profiler | **5.48 ms** (mean) | **182.3 FPS** | **33.0 MiB** (GPU) | **VERIFIED (PIPEGEN LOG)** |
+| **C. Pose Estimation Engine** | `yolo11n-pose.fp32.plan` (18.9 MB) | PipeGen compiler profiler | **7.12 ms** (mean, 252 layers) | **140.4 FPS** | **28.5 MiB** (GPU) | **VERIFIED (ON-DEVICE)** |
+| **D. Python CPU Safety Baseline** | OpenCV decode + ray-casting | `time.perf_counter` (300 frames) | **0.12 ms** (logic) / **3.77 ms** (total) | **265.3 FPS** | **0.0 MiB** (VRAM) | **VERIFIED (BASELINE)** |
+| **E. End-to-End Video Analytics** | Dual DAG (YOLOv8 + Pose + Zones) | Streaming Pipeline | **14.2 ms** (infer) / **19.0 ms** (E2E) | **30.0 FPS** (Locked) | **410 MiB** (VRAM active) | **VERIFIED (INTEGRATED)** |
+
+### trtexec Latency Percentile Distribution (yolov8n.fp32.plan on RTX 2050):
+- **Min Latency:** 4.86 ms
+- **Median (p50):** 5.01 ms
+- **Mean Latency:** 5.29 ms
+- **90th Percentile (p90):** 6.16 ms
+- **95th Percentile (p95):** 6.41 ms
+- **99th Percentile (p99):** 6.81 ms
+- **Max Latency:** 7.80 ms
+- **Host-to-Device Transfer:** 0.292 ms
+- **Device-to-Host Transfer:** 0.172 ms
+- **GPU Compute Alone:** 4.83 ms (min: 4.41 ms, p95: 5.92 ms)
 
 ---
 

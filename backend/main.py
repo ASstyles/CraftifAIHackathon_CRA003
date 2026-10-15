@@ -10,6 +10,7 @@ import json
 import asyncio
 import cv2
 from typing import List, Dict, Any, Optional, AsyncGenerator
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -25,10 +26,25 @@ from sentinel_core.pipegen_adapter import PipeGenAdapter
 from backend.pipeline_manager import PipelineManager
 from backend.sample_generator import simulate_detections_for_frame
 
+pipeline_mgr = PipelineManager(workspace_dir=workspace_dir)
+adapter = PipeGenAdapter(zone_monitor=pipeline_mgr.zone_monitor, source_name="sentinel_stream")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Modern lifespan handler for continuous pipeline management and resource cleanup."""
+    task = asyncio.create_task(pipeline_mgr.run_continuous_pipeline())
+    yield
+    pipeline_mgr.is_running = False
+    pipeline_mgr.stop_pipegen_pipeline()
+    task.cancel()
+
+
 app = FastAPI(
     title="SentinelVision AI API",
     description="Workplace Safety Monitoring Powered by CraftifAI PipeGen (Track A)",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Enable CORS for Vite frontend
@@ -39,9 +55,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-pipeline_mgr = PipelineManager(workspace_dir=workspace_dir)
-adapter = PipeGenAdapter(zone_monitor=pipeline_mgr.zone_monitor, source_name="sentinel_stream")
 
 
 # Request models
@@ -138,6 +151,10 @@ def set_pipeline_mode(req: ModeRequest):
     return {"status": "success", "mode": pipeline_mgr.mode}
 
 
+class PipelineStartRequest(BaseModel):
+    input_source: Optional[str] = None
+
+
 @app.post("/api/pipegen/ingest")
 async def ingest_pipegen_metadata(payload: Dict[str, Any]):
     """
@@ -145,25 +162,45 @@ async def ingest_pipegen_metadata(payload: Dict[str, Any]):
     emitted by CraftifAI PipeGen DeepStream pipeline.
     """
     t0 = time.time()
-    incidents = adapter.ingest_pipegen_frame(payload, frame_timestamp=t0)
+    pipeline_mgr.last_pipegen_ingest_time = t0
+
+    detections = adapter.parse_frame_payload(payload)
+    pipeline_mgr.latest_live_detections = detections
+    pipeline_mgr.total_detections += len(detections)
+    pipeline_mgr.total_frames_processed += 1
+
+    incidents = pipeline_mgr.zone_monitor.process_detections(detections, frame_timestamp=t0)
     latency = (time.time() - t0) * 1000.0
     pipeline_mgr.inference_latency_ms = round(latency, 2)
-    pipeline_mgr.total_frames_processed += 1
 
     for inc in incidents:
         await pipeline_mgr.broadcast_incident(inc)
 
     return {
         "status": "processed",
+        "detections_count": len(detections),
         "incidents_triggered": len(incidents),
         "latency_ms": round(latency, 2)
     }
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Start continuous background pipeline inference on startup."""
-    asyncio.create_task(pipeline_mgr.run_continuous_pipeline())
+@app.post("/api/pipeline/start")
+def start_pipeline(req: Optional[PipelineStartRequest] = None):
+    """Launch the real PipeGen / DeepStream container inference pipeline in background."""
+    src = req.input_source if req else None
+    return pipeline_mgr.start_pipegen_pipeline(input_source=src)
+
+
+@app.post("/api/pipeline/stop")
+def stop_pipeline():
+    """Stop the running PipeGen pipeline container process."""
+    return pipeline_mgr.stop_pipegen_pipeline()
+
+
+@app.get("/api/pipeline/benchmark")
+def get_benchmark_report():
+    """Return measured empirical benchmark metrics for NVIDIA RTX 2050."""
+    return pipeline_mgr.get_benchmark_data()
 
 
 async def generate_mjpeg_stream() -> AsyncGenerator[bytes, None]:
