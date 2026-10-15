@@ -12,6 +12,8 @@ import argparse
 import os
 import sys
 import time
+import json
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
 import cv2
@@ -30,6 +32,8 @@ def parse_args():
     p.add_argument("--pose-conf", type=float, default=0.25, help="pose person confidence")
     p.add_argument("--output", default=None, help="write annotated video here")
     p.add_argument("--no-show", action="store_true")
+    p.add_argument("--api-ingest", default=None, help="URL to post frame detections to (e.g. http://localhost:8000/api/pipegen/ingest)")
+    p.add_argument("--loop", action="store_true", help="loop video continuously")
     return p.parse_args()
 
 
@@ -59,16 +63,47 @@ def main():
 
     pool = ThreadPoolExecutor(max_workers=2)
     fps = 0.0
+    frame_idx = 0
     try:
         while True:
             ok, frame = cap.read()
             if not ok:
+                if args.loop:
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                    continue
                 break
 
             t0 = time.time()
             f_yolo = pool.submit(yolo.infer, frame)
             f_pose = pool.submit(pose.infer, frame)
             yolo_res, pose_res = f_yolo.result(), f_pose.result()
+
+            # Ingest detections to SentinelVision backend if configured
+            if args.api_ingest:
+                objects = []
+                for i, (box, score, cid) in enumerate(yolo_res):
+                    if cid == 0:  # person detection
+                        x1, y1, x2, y2 = [float(v) for v in box]
+                        objects.append({
+                            "class_id": 0,
+                            "obj_label": "person",
+                            "confidence": round(float(score), 3),
+                            "object_id": i + 1,
+                            "rect_params": {
+                                "left": x1,
+                                "top": y1,
+                                "width": max(1.0, x2 - x1),
+                                "height": max(1.0, y2 - y1)
+                            }
+                        })
+                try:
+                    payload = json.dumps({"frame_num": frame_idx, "source_id": 0, "objects": objects}).encode("utf-8")
+                    req = urllib.request.Request(args.api_ingest, data=payload, headers={"Content-Type": "application/json"})
+                    urllib.request.urlopen(req, timeout=0.2)
+                except Exception:
+                    pass
+
+            frame_idx += 1
 
             yolo.draw(frame, yolo_res)     # boxes first
             pose.draw(frame, pose_res)     # skeletons on top
