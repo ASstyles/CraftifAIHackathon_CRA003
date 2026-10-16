@@ -140,7 +140,9 @@ def run_e2e_acceptance_test():
     assert res_incidents.status_code == 200
     incidents = res_incidents.json()
     assert len(incidents) >= 1
-    recent = incidents[0]
+    target_incidents = [inc for inc in incidents if inc.get("zone_id") == "e2e_robotic_perimeter"]
+    assert len(target_incidents) >= 1, f"e2e_robotic_perimeter incident not found in: {incidents}"
+    recent = target_incidents[0]
 
     # Validate against SafetyIncident model schema
     parsed_incident = SafetyIncident(**recent)

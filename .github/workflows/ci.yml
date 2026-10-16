@@ -29,6 +29,9 @@ jobs:
       - name: Run automated test suite
         run: |
           python -m pytest tests/ -v --junitxml=junit-test-results.xml
+
+      - name: Run end-to-end acceptance test
+        run: |
           python scripts/test_end_to_end.py
 
       - name: Upload test results
