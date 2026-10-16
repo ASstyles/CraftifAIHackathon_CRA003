@@ -28,15 +28,7 @@ jobs:
 
       - name: Run automated test suite
         run: |
-          set +e
-          python -m pytest tests/ -v --junitxml=junit-test-results.xml > pytest_output.log 2>&1
-          EXIT_CODE=$?
-          cat pytest_output.log
-          if [ $EXIT_CODE -ne 0 ]; then
-            ERROR_MSG=$(tail -n 25 pytest_output.log | tr '\n' ' ')
-            echo "::error::$ERROR_MSG"
-            exit $EXIT_CODE
-          fi
+          python -m pytest tests/ -v --junitxml=junit-test-results.xml
 
       - name: Run end-to-end acceptance test
         run: |

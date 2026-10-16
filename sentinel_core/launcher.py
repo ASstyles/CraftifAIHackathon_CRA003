@@ -208,7 +208,8 @@ class PipelineProcessManager:
         if sys.platform == "win32" and shutil.which("docker") is None and shutil.which("wsl") is not None:
             win_drive, win_rest = os.path.splitdrive(os.path.abspath(self.workspace_dir))
             drive_letter = win_drive.rstrip(":").lower()
-            wsl_ws = f"/mnt/{drive_letter}{win_rest.replace('\\', '/')}"
+            rest_posix = win_rest.replace('\\', '/')
+            wsl_ws = f"/mnt/{drive_letter}{rest_posix}"
             wsl_cmd = ["wsl", "-d", "Ubuntu", "--", "docker"]
             for arg in cmd[1:]:
                 if arg.startswith(f"{self.workspace_dir}:"):
