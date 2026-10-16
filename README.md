@@ -26,24 +26,24 @@ When personnel enter hazardous perimeter zones, SentinelVision instantly evaluat
    [Video Input & Preprocess] ──► OpenCV Frame Read & Letterbox Resize (CPU)
          │
          ▼
-   [Host-to-Device Transfer]  ──► cudaMemcpyAsync (Pinned/Contiguous Host -> Device)
+   [Host-to-Device Transfer]  ──► Explicit cudaMemcpy (Host RAM -> GPU VRAM)
          │
          ▼
    [PipeGen TensorRT 10.3]    ──► Dual Parallel Engines (execute_async_v3 on RTX 2050)
          │                        - Primary Detector: yolov8n.fp32.plan (4.56 ms GPU)
          │                        - Pose Estimator: yolo11n-pose.fp32.plan (15.83 ms GPU)
          ▼
-   [Device-to-Host Transfer]  ──► cudaMemcpyAsync (Device -> Contiguous Host)
+   [Device-to-Host Transfer]  ──► Explicit cudaMemcpy (GPU VRAM -> Host RAM)
          │
          ▼
    [Postprocessing & Fusion]  ──► Multiclass Person NMS & 17-Anatomical Keypoint Ankle Projection
          │
          ▼
-   [HTTP Ingestion Webhook]   ──► POST /api/pipegen/ingest (High-Throughput Fast Ingest)
+   [HTTP Ingestion Webhook]   ──► POST /api/pipegen/ingest (Per-Frame Detections Delivery)
          │
          ▼
    [Safety Engine & Tracker]  ──► Bottom-Center Foot Projection & Ray-Casting Polygon
-         │                        Stateful SpatialTracker & Duplicate Cooldown Suppression
+         │                        Greedy SpatialTracker (IoU) & Duplicate Cooldown Suppression
          ▼
    [Actionable Incident Bus]  ──► Structured JSON Incident Dispatch (FastAPI & SSE)
          │
@@ -118,6 +118,12 @@ graph TD
 
 ## 3. Visual Demonstration & Real Video Inference Evidence
 
+### Live Operations Dashboard (Verified Hardware Execution)
+The live dashboard visibly displays real-time detection telemetry and active safety incidents dispatched across the SSE stream during real RTX 2050 container execution:
+
+![Live Operations Dashboard](docs/evidence/live_dashboard_gpu_run.png)
+*Live SentinelVision Operations Dashboard displaying worker localized in factory optical stream, polygon restricted zones, and live CRITICAL intrusion alerts with dwell time.*
+
 The pipeline executes on real industrial video streams and generates ground-plane localized detections. Below are keyframes extracted from the verified end-to-end pipeline execution:
 
 | Baseline Safe Monitoring (Worker in Corridor) | Confirmed Restricted Zone Intrusion (Automated Cell 04) |
@@ -125,25 +131,29 @@ The pipeline executes on real industrial video streams and generates ground-plan
 | ![Baseline Monitoring](assets/pipeline_run_frame.jpg) | ![Zone Intrusion](assets/pipeline_intrusion_frame.jpg) |
 | *Worker localized at bottom-center foot coordinate outside hazardous boundary* | *Worker foot contacts restricted polygon: Instant red violation alert dispatched* |
 
-- **Annotated Pipeline Execution Recording:** [`assets/annotated_pipeline_run.mp4`](assets/annotated_pipeline_run.mp4) (2.0 MB)
+- **Live Dashboard Execution Screenshot:** [`docs/evidence/live_dashboard_gpu_run.png`](docs/evidence/live_dashboard_gpu_run.png)
+- **Annotated Pipeline Execution Recording:** [`assets/annotated_pipeline_run.mp4`](assets/annotated_pipeline_run.mp4) (3.85 MB)
 - **Workplace Safety Demonstration Video:** [`assets/workplace_safety_demo.mp4`](assets/workplace_safety_demo.mp4) (1.67 MB)
-- **Official PipeGen GUI Sign-In & Project Window:** [`assets/pipegen_signin_window.png`](assets/pipegen_signin_window.png)
+- **Official PipeGen GUI Sign-In Window:** [`docs/evidence/pipegen_signin_window.png`](docs/evidence/pipegen_signin_window.png)
+- **Hardware Acceptance Summary (JSON):** [`logs/gpu_acceptance_summary.json`](logs/gpu_acceptance_summary.json)
 
 ---
 
 ## 4. Track A: PipeGen Deliverables Checklist
 
-| Track A Requirement | Status | Artifact Location | Details |
-|---|---|---|---|
-| **1. Natural Language Requirement** | **PASS** | [`pipegen_pipeline/requirement.txt`](pipegen_pipeline/requirement.txt)<br>[`pipegen_pipeline/official_pipegen_build/RequirementState.json`](pipegen_pipeline/official_pipegen_build/RequirementState.json)<br>[`docs/evidence/EVIDENCE_CATALOG.md`](docs/evidence/EVIDENCE_CATALOG.md) | Specification prompt for worker detection and restricted zone monitoring (UUID: `b76a3ca5-5761-42e2-b55c-a37885395116`) |
+| Track A Requirement | Status | Artifact Location | Details & Truthful Provenance |
+|---|:---:|---|---|
+| **1. Natural Language Requirement** | **PASS** | [`pipegen_pipeline/requirement.txt`](pipegen_pipeline/requirement.txt)<br>[`pipegen_pipeline/official_pipegen_build/RequirementState.json`](pipegen_pipeline/official_pipegen_build/RequirementState.json) | Specification prompt for worker detection and restricted zone monitoring (UUID: `b76a3ca5-5761-42e2-b55c-a37885395116`) |
+| **1b. Interactive PipeGen DAG Canvas** | **PARTIAL** | [`docs/evidence/pipegen_signin_window.png`](docs/evidence/pipegen_signin_window.png) | Desktop window captured under WSLg (`/opt/PipeGen/PipeGenApp`); cloud login required for interactive graph viewer during post-build audit; no synthetic screenshot fabricated. |
 | **2. Pipeline Intermediate Representation (IR)** | **PASS** | [`pipegen_pipeline/official_pipegen_build/PipelineIR.json`](pipegen_pipeline/official_pipegen_build/PipelineIR.json)<br>[`docs/ARCHITECTURE_AND_CLAIMS_AUDIT.md`](docs/ARCHITECTURE_AND_CLAIMS_AUDIT.md) | Generated by PipeGen v0.5.1: 8 interconnected DAG nodes (camera -> preprocess -> infer -> postprocess -> pose -> fusion) |
 | **3. Pretrained Model Selection** | **PASS** | [`pipegen_pipeline/official_pipegen_build/src1/yolov8_pose_parallel/models/`](pipegen_pipeline/official_pipegen_build/src1/yolov8_pose_parallel/models/) | Dual parallel architecture: YOLOv8n detector + YOLO11n-pose (17 keypoints). ONNX models versioned in repo; acquisition script [`scripts/setup_models.sh`](scripts/setup_models.sh) |
 | **4. TensorRT Engine Compilation** | **PASS** | [`pipegen_pipeline/official_pipegen_build/model_stage/`](pipegen_pipeline/official_pipegen_build/model_stage/) | `yolov8n.fp32.plan` (22.3 MB, 248 TRT layers) & `yolo11n-pose.fp32.plan` (18.9 MB, 252 layers) compiled on RTX 2050 via TensorRT 10.3. Compilation script: [`scripts/compile_engines.sh`](scripts/compile_engines.sh) |
-| **5. Container Pipeline Execution** | **PASS** | [`sentinel_core/launcher.py`](sentinel_core/launcher.py)<br>[`scripts/run_pipegen_end_to_end.sh`](scripts/run_pipegen_end_to_end.sh) | DeepStream 7.1 container run with GPU passthrough, validated TensorRT 10.3 runner (`detectors.py`), persistent `SpatialTracker`, and real-time backend API ingestion |
+| **5. Container Pipeline Execution** | **PASS** | [`sentinel_core/launcher.py`](sentinel_core/launcher.py)<br>[`scripts/run_pipegen_end_to_end.sh`](scripts/run_pipegen_end_to_end.sh) | DeepStream 7.1 container run with GPU passthrough, native TensorRT 10.3 runner (`detectors.py`), greedy IoU `SpatialTracker`, and real-time backend API ingestion |
 | **6. Speed & Latency Benchmark Report** | **PASS** | [`pipegen_pipeline/speed_report.md`](pipegen_pipeline/speed_report.md)<br>[`pipegen_pipeline/actual_measured_benchmark.json`](pipegen_pipeline/actual_measured_benchmark.json) | Measured via `trtexec`: YOLOv8n: **5.06 ms mean** (**5.46 ms p95**, **194.52 FPS throughput**); YOLO11n-Pose: **16.40 ms mean** (**20.46 ms p95**, **60.63 FPS throughput**); Active VRAM: 33.0 MiB / 37.0 MiB |
-| **7. Video Demonstration** | **PASS** | [`assets/annotated_pipeline_run.mp4`](assets/annotated_pipeline_run.mp4)<br>[`docs/evidence/EVIDENCE_CATALOG.md`](docs/evidence/EVIDENCE_CATALOG.md) | Processed end-to-end output video with real bounding boxes and pose skeletons |
-| **8. Actionable Output (JSON)** | **PASS** | [`sentinel_core/models.py`](sentinel_core/models.py)<br>[`logs/end_to_end_test_summary.json`](logs/end_to_end_test_summary.json) | Schema-compliant structured JSON incident dispatch with dwell-time tracking and contact localization provenance |
-| **9. Standalone Export Bundle** | **PASS** | [`pipegen_pipeline/craftifai_pipegen_export_CRA003.zip`](pipegen_pipeline/craftifai_pipegen_export_CRA003.zip) | Complete PipeGen export zip bundle (**21.17 MB**) containing IR, compile metadata, tactics, profiles, code, and ONNX models |
+| **7. Video Demonstration** | **PASS** | [`assets/annotated_pipeline_run.mp4`](assets/annotated_pipeline_run.mp4)<br>[`docs/evidence/EVIDENCE_CATALOG.md`](docs/evidence/EVIDENCE_CATALOG.md) | Processed end-to-end output video with real bounding boxes and pose skeletons (300 frames, 1280x720 @ 30 FPS, playable) |
+| **8. Actionable Output (JSON)** | **PASS** | [`sentinel_core/models.py`](sentinel_core/models.py)<br>[`logs/gpu_acceptance_summary.json`](logs/gpu_acceptance_summary.json) | Schema-compliant structured JSON incident dispatch with dwell-time tracking and contact localization provenance (`pose_ankles`) |
+| **9. Standalone Export Bundle** | **PASS** | [`pipegen_pipeline/craftifai_pipegen_export_CRA003.zip`](pipegen_pipeline/craftifai_pipegen_export_CRA003.zip) | Complete PipeGen export zip bundle (**21.17 MB**, 47 files) containing IR, compile metadata, tactics, profiles, code, and ONNX models |
+| **10. Reproducible Hardware Acceptance** | **PASS** | [`scripts/run_gpu_acceptance.py`](scripts/run_gpu_acceptance.py)<br>[`logs/gpu_acceptance_summary.json`](logs/gpu_acceptance_summary.json) | Standalone hardware validation verifying backend, engine hashes, SSE streaming, 300/300 frames, 0 ingest failures, and video output |
 
 *Full 15-item Track A Acceptance Checklist is available at [`TRACK_A_CHECKLIST.md`](TRACK_A_CHECKLIST.md).*
 
@@ -182,12 +192,20 @@ python -m pytest tests/ -v
 ```
 *Result: 59 passed (100% test pass rate covering launcher safety and named CLI flags, TRT error handling, metric provenance and synthetic test isolation, geometry, ankle pose vs foot localization, SpatialTracker persistence and occlusion survival, suppression, dwell time, schema, CORS security, malformed payload validation, standalone export bundle integrity, and API).*
 
-### Step 2.1: Run End-to-End Acceptance Test
-Execute the full 7-stage event path verification (zone configuration -> mode switch -> safe frame -> intrusion trigger -> cooldown suppression -> schema check -> cleanup):
+### Step 2.1: Run End-to-End Acceptance Test (Synthetic Fixtures)
+Execute the 7-stage event path verification (zone configuration -> mode switch -> safe frame -> intrusion trigger -> cooldown suppression -> schema check -> cleanup):
 ```bash
 python scripts/test_end_to_end.py
 ```
 *Output summary saved to `logs/end_to_end_test_summary.json`. Note: This script validates the incident ingestion contract using isolated synthetic acceptance fixtures and resets telemetry afterwards to prevent metric pollution.*
+
+### Step 2.2: Run Reproducible Hardware GPU Integration Run (NVIDIA GPU + Container)
+Execute the complete hardware-in-the-loop pipeline verification (pre-flight checks, native TensorRT engines, DeepStream container execution, live HTTP ingestion, SSE streaming, incident schema verification, and video validation):
+```bash
+# Ensure backend is running in Terminal 1, then execute:
+python scripts/run_gpu_acceptance.py
+```
+*Output summary dynamically saved to `logs/gpu_acceptance_summary.json` (zero hardcoding, derived from actual hardware execution).*
 
 ### Step 3: Start the Backend Server
 ```bash
@@ -265,18 +283,18 @@ SentinelVision implements **anatomically precise ground-contact localization**:
 
 The computed contact point is evaluated against all configured restricted polygon vertices using Ray-Casting Point-in-Polygon testing.
 
-### Persistent Object Tracking (`SpatialTracker`)
-Instead of assigning volatile frame-by-frame index numbers (which cause identity jumping and broken dwell times), SentinelVision implements `SpatialTracker`:
-- Uses IoU (Intersection-over-Union) spatial association across consecutive video frames (threshold $\ge 0.3$).
-- Assigns persistent, monotonic `track_id` values to detected workers.
-- Maintains track continuity through momentary visual occlusions (up to 30 frames age-out window).
-- Accurate `track_id` values drive cumulative intrusion dwell-time tracking (`dwell_time_seconds`) and duplicate alert suppression cooldowns.
+### Spatial Object Tracking (`SpatialTracker`)
+Instead of assigning arbitrary frame-by-frame index numbers (which cause identity jumping and broken dwell times), SentinelVision implements `SpatialTracker`:
+- Uses greedy IoU (Intersection-over-Union) spatial association across consecutive video frames (threshold $\ge 0.3$).
+- Assigns monotonic `track_id` values to detected workers and smooths coordinates using exponential moving average (EMA).
+- Maintains track continuity across brief visual occlusions (up to 15–20 frames age-out window).
+- **Tracking Limitations:** Because association is purely geometric without appearance re-identification (Re-ID) embeddings, the tracker can experience identity switches when workers cross paths closely or remain occluded for extended intervals.
 
 ---
 
 ## 8. Real Inference vs Simulation Mode Isolation
 
-To guarantee absolute transparency and ensure judges are never misled:
+To maintain rigorous transparency and ensure evaluations are grounded in verifiable data:
 - **`live` Mode (Default for GPU Pipeline):** SentinelVision accepts detections exclusively from the PipeGen / DeepStream inference pipeline via `/api/pipegen/ingest`. If PipeGen is not actively streaming frames, the dashboard displays:
   `SentinelVision Track A | Mode: LIVE GPU (AWAITING_PIPEGEN_INGESTION)`. No fake detections are ever injected.
 - **`demo` Mode (Controlled Test Fixture):** For offline demonstration or continuous visual evaluation without a physical camera or Docker, the backend can stream a synthetic test fixture. In this mode:
@@ -373,7 +391,9 @@ Measured using high-resolution monotonic timer (`time.perf_counter`) over 300 fr
 1. **Monocular Camera Ground Plane Assumption:** Bottom-center foot contact projection assumes an approximately flat ground plane. In multi-level factories with elevated catwalks or mezzanine floors, calibrated homography or 3D LiDAR/stereo depth integration is required.
 2. **NVIDIA TensorRT Hardware Coupling:** TensorRT compilation (`.plan`) serializes GPU microarchitecture-specific kernel tactics. The precompiled `.plan` engines target Compute Capability 8.6 (RTX 2050 / RTX 30-series). On different NVIDIA GPU generations (e.g. Jetson Orin CC 8.7 or Ada Lovelace CC 8.9), PipeGen re-executes compilation via `ModelStage` to generate native tactics (run `./scripts/compile_engines.sh`).
 3. **Severe Visual Occlusion:** If a worker's lower body is completely obstructed by solid machinery, foot projection falls back to the lowest visible bounding-box edge until the pose skeleton estimator acquires knee/ankle keypoints.
-4. **Certified Safety Disclaimer:** This prototype demonstrates autonomous AI pipeline generation, compilation, and safety logic. It is intended for supervisory alerting and audit logging, and does not replace certified industrial hardware interlocks (e.g., SIL-3 / ISO 13849 light curtains).
+4. **Greedy IoU Tracker Identity Switches:** The spatial tracker relies on geometric IoU matching rather than visual Re-ID feature embeddings. Track IDs may switch when workers cross paths or undergo prolonged occlusions.
+5. **HTTP Ingestion Delivery vs Incident Triggering:** Successful HTTP 200 delivery from the pipeline runner indicates that per-frame detection telemetry reached the backend webhook; an incident is created only if a worker's foot contact coordinates breach a configured hazard zone boundary.
+6. **Certified Safety Disclaimer:** This prototype demonstrates autonomous AI pipeline generation, compilation, and safety logic. It is intended for supervisory alerting and audit logging, and does not replace certified industrial hardware interlocks (e.g., SIL-3 / ISO 13849 light curtains).
 
 ---
 

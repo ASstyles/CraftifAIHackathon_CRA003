@@ -29,6 +29,7 @@ jobs:
       - name: Run automated test suite
         run: |
           python -m pytest tests/ -v --junitxml=junit-test-results.xml
+          python scripts/test_end_to_end.py
 
       - name: Upload test results
         if: always()

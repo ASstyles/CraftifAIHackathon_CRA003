@@ -2,11 +2,12 @@
 """YOLOv8 person detection + YOLO11-pose estimation on NVIDIA TensorRT / PipeGen.
 
 Runs the parallel detection and pose inference pipeline on NVIDIA GPU:
-1. Native TensorRT 10.3 Engine execution (when .plan exists) with zero-copy CUDA memory.
-2. Persistent Spatial IoU Object Tracker (guarantees stable track IDs across frames).
-3. Pose-Driven Ground Contact Localization (uses ankle keypoints when available,
+1. Native TensorRT 10.3 Engine execution with explicit CUDA host/device transfers (cudaMemcpy H2D/D2H).
+2. Greedy IoU-based object tracker (associates detections across frames, subject to identity switches during occlusions).
+3. Pose-Driven Ground Contact Localization (uses ankle keypoints when confidence >= 0.30,
    with bounding-box bottom-center fallback).
 4. Direct REST webhook ingestion into SentinelVision FastAPI backend (/api/pipegen/ingest).
+   Note: Delivery confirms HTTP receipt of frame metadata; incident generation requires zone boundary breach.
 
 Usage:
     python yolov8_pose.py --input video.mp4 --output out.mp4 --api-ingest http://localhost:8000/api/pipegen/ingest
@@ -53,7 +54,7 @@ class Track:
 
 
 class SpatialTracker:
-    """Persistent spatial object tracker using bounding-box IoU association."""
+    """Spatial object tracker using greedy bounding-box IoU association (subject to identity switches during occlusion/overlap)."""
     def __init__(self, max_age: int = 20, iou_threshold: float = 0.3):
         self.max_age = max_age
         self.iou_threshold = iou_threshold
@@ -192,7 +193,7 @@ def parse_args():
 def main():
     args = parse_args()
 
-    print("=== SentinelVision Official PipeGen / DeepStream Inference Pipeline ===")
+    print("=== SentinelVision PipeGen Inference Runner (DeepStream Container Environment) ===")
     print(f"  Target Video Source : {args.input}")
     print(f"  YOLOv8 Model Target : {args.yolo_model}")
     print(f"  Pose Model Target   : {args.pose_model}")
@@ -227,6 +228,48 @@ def main():
     ingest_fail_count = 0
     last_ingest_error = None
 
+    active_api_ingest = args.api_ingest
+    if active_api_ingest and ("localhost" in active_api_ingest or "127.0.0.1" in active_api_ingest):
+        # Test if localhost is directly reachable; if not, discover WSL/Docker host gateway
+        try:
+            urllib.request.urlopen(active_api_ingest, timeout=0.3)
+        except urllib.error.HTTPError:
+            pass  # HTTP error (e.g. 405 Method Not Allowed) means endpoint is reachable
+        except Exception:
+            candidates = []
+            # Check default route or resolv.conf
+            try:
+                with open("/proc/net/route", "r") as f:
+                    for line in f:
+                        fields = line.strip().split()
+                        if len(fields) >= 3 and fields[1] == "00000000":
+                            gw_hex = fields[2]
+                            gw_ip = ".".join(str(int(gw_hex[i:i+2], 16)) for i in (6, 4, 2, 0))
+                            candidates.append(gw_ip)
+            except Exception:
+                pass
+            try:
+                with open("/etc/resolv.conf", "r") as f:
+                    for line in f:
+                        if line.startswith("nameserver"):
+                            candidates.append(line.split()[1].strip())
+            except Exception:
+                pass
+            candidates.extend(["172.18.32.1", "172.17.0.1", "172.19.0.1", "host.docker.internal"])
+            for cand in candidates:
+                cand_url = active_api_ingest.replace("localhost", cand).replace("127.0.0.1", cand)
+                try:
+                    urllib.request.urlopen(cand_url, timeout=0.3)
+                    print(f"[Ingest Discovery] Resolved host gateway ingestion URL: {cand_url}")
+                    active_api_ingest = cand_url
+                    break
+                except urllib.error.HTTPError:
+                    print(f"[Ingest Discovery] Resolved host gateway ingestion URL: {cand_url}")
+                    active_api_ingest = cand_url
+                    break
+                except Exception:
+                    continue
+
     try:
         while True:
             ok, frame = cap.read()
@@ -250,7 +293,7 @@ def main():
             active_tracks = tracker.update(person_dets)
 
             # Ingest detections to SentinelVision backend with Pose-Driven Foot Localization
-            if args.api_ingest:
+            if active_api_ingest:
                 objects = []
                 for trk in active_tracks:
                     x1, y1, x2, y2 = [float(v) for v in trk.box]
@@ -263,7 +306,7 @@ def main():
                         "class_id": 0,
                         "obj_label": "person",
                         "confidence": round(float(trk.score), 3),
-                        "object_id": trk.track_id,  # Genuine persistent tracking ID
+                        "object_id": trk.track_id,  # Greedy IoU track ID (subject to identity switches)
                         "rect_params": {
                             "left": round(x1, 1),
                             "top": round(y1, 1),
@@ -283,7 +326,7 @@ def main():
                         "inference_latency_ms": round(infer_ms, 2)
                     }).encode("utf-8")
                     req = urllib.request.Request(
-                        args.api_ingest,
+                        active_api_ingest,
                         data=payload,
                         headers={"Content-Type": "application/json"}
                     )
@@ -293,7 +336,7 @@ def main():
                         else:
                             ingest_fail_count += 1
                             if ingest_fail_count <= 3 or ingest_fail_count % 60 == 0:
-                                print(f"[Ingest Warning] HTTP {resp.status} posting frame {frame_idx} to {args.api_ingest}", file=sys.stderr)
+                                print(f"[Ingest Warning] HTTP {resp.status} posting frame {frame_idx} to {active_api_ingest}", file=sys.stderr)
                 except urllib.error.URLError as e:
                     ingest_fail_count += 1
                     last_ingest_error = str(e.reason) if hasattr(e, "reason") else str(e)
@@ -345,8 +388,8 @@ def main():
             except Exception:
                 pass
         print(f"Pipeline execution finished. Processed {frame_idx} frames.")
-        if args.api_ingest:
-            print(f"Backend Ingest Telemetry: {ingest_sent_count} delivered, {ingest_fail_count} failed to {args.api_ingest}")
+        if active_api_ingest:
+            print(f"Backend Ingest Telemetry: {ingest_sent_count} delivered, {ingest_fail_count} failed to {active_api_ingest} (HTTP ingestion delivers frame metadata; incidents require zone boundary intrusion)")
 
 
 if __name__ == "__main__":

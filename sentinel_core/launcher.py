@@ -204,9 +204,22 @@ class PipelineProcessManager:
         self.log_file_path = os.path.join(log_dir, "pipegen_runner.log")
         self._log_file_handle = open(self.log_file_path, "w", buffering=1, encoding="utf-8")
 
+        exec_cmd = list(cmd)
+        if sys.platform == "win32" and shutil.which("docker") is None and shutil.which("wsl") is not None:
+            win_drive, win_rest = os.path.splitdrive(os.path.abspath(self.workspace_dir))
+            drive_letter = win_drive.rstrip(":").lower()
+            wsl_ws = f"/mnt/{drive_letter}{win_rest.replace('\\', '/')}"
+            wsl_cmd = ["wsl", "-d", "Ubuntu", "--", "docker"]
+            for arg in cmd[1:]:
+                if arg.startswith(f"{self.workspace_dir}:"):
+                    wsl_cmd.append(f"{wsl_ws}:/workspace")
+                else:
+                    wsl_cmd.append(arg)
+            exec_cmd = wsl_cmd
+
         try:
             self.process = subprocess.Popen(
-                cmd,
+                exec_cmd,
                 stdout=self._log_file_handle,
                 stderr=subprocess.STDOUT,
                 text=True

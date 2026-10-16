@@ -57,6 +57,8 @@ To maintain strict technical defensibility and avoid conflation, SentinelVision'
 ### Layer C: Custom Safety & Dashboard Stack
 - Built in Python/FastAPI and React/TypeScript.
 - Processes webhook payloads from the runner, performs ray-casting point-in-polygon checks on ground contact coordinates, tracks worker dwell times, suppresses duplicate alert triggers, and broadcasts standardized JSON events over SSE.
+- **Ingestion vs Incident Clarification:** Successful HTTP ingestion (`200 OK`) confirms delivery and parsing of frame detection metadata by the backend. It does not by itself prove that an intrusion incident occurred or was displayed; safety incidents are generated exclusively when worker ground-contact coordinates intersect a configured hazard polygon.
+- **Latency Scope Clarification:** Standalone detector/pose benchmark latency (`trtexec` 5.06 ms / 16.40 ms) measures raw model compute time and memory transfers on the GPU. Full application end-to-end latency additionally includes frame decoding, preprocessing, dual-model synchronization, greedy tracking, ground contact localization, HTTP JSON serialization, network transport, polygon ray-casting, SSE event emission, and web dashboard DOM rendering.
 
 ---
 
@@ -64,16 +66,17 @@ To maintain strict technical defensibility and avoid conflation, SentinelVision'
 
 | Documented Claim | Verified Reality | Status | Evidence Location |
 |---|---|:---:|---|
-| "Zero-Copy GPU Inference" | Explicit `cudaMalloc` device buffers with `cudaMemcpy` (Host-to-Device 0.28 ms, Device-to-Host 0.22 ms). | **CORRECTED** | `detectors.py` lines 105 & 112 |
-| "DeepStream GStreamer Pipeline" | Python runner running inside DeepStream 7.1 container with native TensorRT 10.3 bindings and `SpatialTracker` Python IoU tracker. | **CORRECTED** | `yolov8_pose.py`, `detectors.py` |
-| "YOLOv8n TensorRT 10.3 Latency: 5.06 ms" | Measured via `trtexec` on NVIDIA GeForce RTX 2050 (FP32, 248 layers): 5.06 ms mean latency, 4.56 ms GPU compute time, 194.52 FPS. | **VERIFIED** | `actual_measured_benchmark.json`, `trt_gpu_profile.json` |
-| "YOLO11n-Pose Latency: 16.40 ms" | Measured via `trtexec` on RTX 2050 (FP32, 252 layers): 16.40 ms mean latency, 15.83 ms GPU compute time, 60.63 FPS. | **VERIFIED** | `actual_measured_benchmark.json` |
+| "Zero-Copy GPU Inference" | Explicit `cudaMalloc` device buffers with `cudaMemcpy` (Host-to-Device 0.28 ms, Device-to-Host 0.22 ms). Pinned host memory and device buffers are explicitly transferred. | **CORRECTED** | `detectors.py` lines 105 & 112 |
+| "DeepStream GStreamer Pipeline" | Python runner running inside DeepStream 7.1 container with native TensorRT 10.3 bindings and `SpatialTracker` Python IoU tracker. Does not use native GStreamer C plugins (`nvstreammux`/`nvtracker`). | **CORRECTED** | `yolov8_pose.py`, `detectors.py` |
+| "Guaranteed Persistent Track IDs" | `SpatialTracker` is a greedy IoU-based bounding-box association tracker. It maintains track IDs across consecutive frames and allows brief re-association (up to 15 frames), but is subject to identity switches during occlusions, intersections, or rapid motion. | **CORRECTED** | `yolov8_pose.py` lines 55-122 |
+| "YOLOv8n TensorRT 10.3 Latency: 5.06 ms" | Measured via `trtexec` on NVIDIA GeForce RTX 2050 (FP32, 248 layers): 5.06 ms mean latency, 4.56 ms GPU compute time, 194.52 FPS. Measures standalone model latency, not full app latency. | **VERIFIED** | `actual_measured_benchmark.json`, `trt_gpu_profile.json` |
+| "YOLO11n-Pose Latency: 16.40 ms" | Measured via `trtexec` on RTX 2050 (FP32, 252 layers): 16.40 ms mean latency, 15.83 ms GPU compute time, 60.63 FPS. Measures standalone model latency, not full app latency. | **VERIFIED** | `actual_measured_benchmark.json` |
 | "Host Video & Safety Pipeline Baseline: 3.77 ms" | Measured via high-resolution monotonic timer over 300 frames: 0.12 ms ray-casting, 3.65 ms decode/encode (265.26 FPS CPU baseline). | **VERIFIED** | `speed_report.md` |
-| "Pose-Driven Ground Contact Localization" | Keypoints 15 & 16 (ankles) localized when confidence $\ge 0.30$; falls back to bounding-box bottom-center coordinate. | **VERIFIED** | `yolov8_pose.py` lines 223-240 |
-| "Persistent Track IDs" | `SpatialTracker` IoU association assigns monotonic track IDs across frames and handles up to 15 frames occlusion. | **VERIFIED** | `yolov8_pose.py` lines 55-122 |
+| "Pose-Driven Ground Contact Localization" | Keypoints 15 & 16 (ankles) localized when confidence $\ge 0.30$; falls back to bounding-box bottom-center coordinate. | **VERIFIED** | `yolov8_pose.py` lines 124-164 |
+| "HTTP Ingestion Proves Incident Creation" | HTTP ingestion confirms receipt of per-frame object detections. Safety incidents are conditionally created only upon polygon boundary penetration. | **CORRECTED** | `yolov8_pose.py`, `sentinel_core/pipegen_adapter.py` |
 | "321-node IR" | PipeGen `PipelineIR.json` includes 321 internal IR tokens/nodes detailing the DAG graph, shapes, and layer configurations. | **VERIFIED** | `pipegen_pipeline/official_pipegen_build/PipelineIR.json` |
 | "Standalone Export Bundle" | 21.17 MB zip bundle containing IR, compilation metadata, tactic profiles, code, ONNX models, and compile scripts. | **VERIFIED** | `pipegen_pipeline/craftifai_pipegen_export_CRA003.zip` |
 | "Launcher CLI Parsing" | Rewritten `scripts/run_pipegen_end_to_end.sh` supporting robust named arguments (`--input`, `--runtime`, `--api-ingest`, etc.), pre-flight checks, and non-zero exit codes. | **VERIFIED** | `scripts/run_pipegen_end_to_end.sh`, `tests/test_launcher.py` |
-| "HTTP Ingestion Resilience" | Ingestion loop in `yolov8_pose.py` tracks sent/failed counts, logs connection errors rate-limited, and prints summary in `finally` block instead of silently swallowing exceptions. | **VERIFIED** | `yolov8_pose.py` lines 34-45 & 270-305 |
+| "HTTP Ingestion Resilience" | Ingestion loop in `yolov8_pose.py` tracks sent/failed counts, logs connection errors rate-limited, and prints summary in `finally` block instead of silently swallowing exceptions. | **VERIFIED** | `yolov8_pose.py` lines 277-307 |
 | "API CORS Configuration" | Restricted from wildcard `*` with credentials to strict localhost origin regex matching `http://localhost:*` and `http://127.0.0.1:*`. | **VERIFIED** | `backend/main.py` lines 42-49 |
 | "Synthetic Test Telemetry Isolation" | Added `POST /api/pipeline/reset-telemetry` called by acceptance tests, ensuring synthetic test fixtures cannot contaminate live GPU telemetry. | **VERIFIED** | `backend/main.py`, `scripts/test_end_to_end.py` |

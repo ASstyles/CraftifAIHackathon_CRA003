@@ -40,6 +40,19 @@ def generate_sample_hazard_video(output_path: str, duration_sec: int = 10, fps: 
     # Walks across to x=650, y=520 (deep inside Zone 1) around frame 100-200
     # Dwells inside Zone 1, then exits to x=1050, y=500
 
+    # Load realistic worker sprite if available for genuine detector/pose evaluation
+    worker_crop = None
+    crop_candidates = [
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "worker_crop.png"),
+        os.path.join(os.path.dirname(os.path.abspath(output_path)), "worker_crop.png"),
+    ]
+    for cp in crop_candidates:
+        if os.path.exists(cp):
+            loaded = cv2.imread(cp, cv2.IMREAD_UNCHANGED)
+            if loaded is not None and len(loaded.shape) == 3 and loaded.shape[2] == 4:
+                worker_crop = loaded
+                break
+
     for frame_idx in range(total_frames):
         # 1. Base Factory Floor (Dark industrial metallic gray)
         frame = np.full((height, width, 3), (35, 38, 42), dtype=np.uint8)
@@ -92,30 +105,53 @@ def generate_sample_hazard_video(output_path: str, duration_sec: int = 10, fps: 
             wx = int(600 + t * (1150 - 600))
             wy = int(540 + t * 40)
 
-        # Worker Bounding Box Dimensions: approx 70w x 160h
-        w_width = 68
-        w_height = 155
-        w_xmin = wx - w_width // 2
-        w_ymin = wy - w_height
-        w_xmax = wx + w_width // 2
-        w_ymax = wy
+        if worker_crop is not None:
+            # Photorealistic worker composite
+            w_height = int(220 + (wy / 720.0) * 40)
+            aspect = worker_crop.shape[1] / float(worker_crop.shape[0])
+            w_width = int(w_height * aspect)
+            w_xmin = wx - w_width // 2
+            w_ymin = wy - w_height
+            w_xmax = w_xmin + w_width
+            w_ymax = wy
 
-        # Draw Worker Silhouette (High-vis vest & hard hat)
-        # Head / Hardhat (yellow)
-        cv2.circle(frame, (wx, w_ymin + 18), 16, (0, 215, 255), -1)
-        # Torso / High-vis orange vest
-        cv2.rectangle(frame, (wx - 22, w_ymin + 36), (wx + 22, w_ymin + 100), (0, 115, 255), -1)
-        # Silver reflective stripes on vest
-        cv2.line(frame, (wx - 20, w_ymin + 55), (wx + 20, w_ymin + 55), (240, 240, 240), 3)
-        cv2.line(frame, (wx - 20, w_ymin + 75), (wx + 20, w_ymin + 75), (240, 240, 240), 3)
-        # Legs / Dark navy trousers
-        # Walk cycle simulation
-        leg_offset = int(np.sin(frame_idx * 0.4) * 12)
-        cv2.line(frame, (wx - 10, w_ymin + 100), (wx - 10 + leg_offset, w_ymax), (120, 80, 50), 8)
-        cv2.line(frame, (wx + 10, w_ymin + 100), (wx + 10 - leg_offset, w_ymax), (120, 80, 50), 8)
+            # Contact point shadow
+            cv2.ellipse(frame, (wx, wy), (int(w_width * 0.45), 10), 0, 0, 360, (20, 20, 25), -1)
 
-        # Shadow
-        cv2.ellipse(frame, (wx, w_ymax), (30, 10), 0, 0, 360, (20, 20, 25), -1)
+            target_x1 = max(0, w_xmin)
+            target_y1 = max(0, w_ymin)
+            target_x2 = min(width, w_xmax)
+            target_y2 = min(height, w_ymax)
+            crop_w = target_x2 - target_x1
+            crop_h = target_y2 - target_y1
+
+            if crop_w > 0 and crop_h > 0:
+                crop_x1 = target_x1 - w_xmin
+                crop_y1 = target_y1 - w_ymin
+                resized_worker = cv2.resize(worker_crop, (w_width, w_height))
+                sub_worker = resized_worker[crop_y1:crop_y1 + crop_h, crop_x1:crop_x1 + crop_w]
+                alpha = sub_worker[:, :, 3:4] / 255.0
+                frame_roi = frame[target_y1:target_y2, target_x1:target_x2]
+                frame[target_y1:target_y2, target_x1:target_x2] = (
+                    (1.0 - alpha) * frame_roi + alpha * sub_worker[:, :, :3]
+                ).astype(np.uint8)
+        else:
+            # Geometric fallback
+            w_width = 68
+            w_height = 155
+            w_xmin = wx - w_width // 2
+            w_ymin = wy - w_height
+            w_xmax = wx + w_width // 2
+            w_ymax = wy
+
+            cv2.circle(frame, (wx, w_ymin + 18), 16, (0, 215, 255), -1)
+            cv2.rectangle(frame, (wx - 22, w_ymin + 36), (wx + 22, w_ymin + 100), (0, 115, 255), -1)
+            cv2.line(frame, (wx - 20, w_ymin + 55), (wx + 20, w_ymin + 55), (240, 240, 240), 3)
+            cv2.line(frame, (wx - 20, w_ymin + 75), (wx + 20, w_ymin + 75), (240, 240, 240), 3)
+            leg_offset = int(np.sin(frame_idx * 0.4) * 12)
+            cv2.line(frame, (wx - 10, w_ymin + 100), (wx - 10 + leg_offset, w_ymax), (120, 80, 50), 8)
+            cv2.line(frame, (wx + 10, w_ymin + 100), (wx + 10 - leg_offset, w_ymax), (120, 80, 50), 8)
+            cv2.ellipse(frame, (wx, w_ymax), (30, 10), 0, 0, 360, (20, 20, 25), -1)
 
         # Write Frame
         out.write(frame)

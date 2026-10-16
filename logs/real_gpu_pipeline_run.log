@@ -1,3 +1,15 @@
+==========================================================================
+ SentinelVision — Official PipeGen / DeepStream Container Pipeline
+ Track A: PipeGen | Participant ID: CRA003
+==========================================================================
+  Workspace       : /mnt/c/Users/avira/Desktop/New folder (2)
+  Input Source    : assets/workplace_safety_demo.mp4 (Host: /mnt/c/Users/avira/Desktop/New folder (2)/assets/workplace_safety_demo.mp4)
+  YOLO Model      : /workspace/pipegen_pipeline/official_pipegen_build/model_stage/yolov8n.fp32.plan (Host: /mnt/c/Users/avira/Desktop/New folder (2)/pipegen_pipeline/official_pipegen_build/model_stage/yolov8n.fp32.plan)
+  Pose Model      : /workspace/pipegen_pipeline/official_pipegen_build/model_stage/6-yolo11n-pose/yolo11n-pose.fp32.plan (Host: /mnt/c/Users/avira/Desktop/New folder (2)/pipegen_pipeline/official_pipegen_build/model_stage/6-yolo11n-pose/yolo11n-pose.fp32.plan)
+  Output Video    : assets/annotated_pipeline_run.mp4
+  Backend Ingest  : http://172.18.32.1:8000/api/pipegen/ingest
+  Runtime Mode    : tensorrt_required
+==========================================================================
 
 ===============================
    DeepStreamSDK 
@@ -25,7 +37,7 @@ This container image and its contents are governed by the NVIDIA Deep Learning C
 By pulling and using the container, you accept the terms and conditions of this license:
 https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
 
-=== SentinelVision Official PipeGen / DeepStream Inference Pipeline ===
+=== SentinelVision PipeGen Inference Runner (DeepStream Container Environment) ===
   Target Video Source : /workspace/assets/workplace_safety_demo.mp4
   YOLOv8 Model Target : /workspace/pipegen_pipeline/official_pipegen_build/model_stage/yolov8n.fp32.plan
   Pose Model Target   : /workspace/pipegen_pipeline/official_pipegen_build/model_stage/6-yolo11n-pose/yolo11n-pose.fp32.plan
@@ -35,4 +47,4 @@ https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
 [Model Factory] Loading required TensorRT pose engine: /workspace/pipegen_pipeline/official_pipegen_build/model_stage/6-yolo11n-pose/yolo11n-pose.fp32.plan
 [TensorRT] Loaded native pose engine: /workspace/pipegen_pipeline/official_pipegen_build/model_stage/6-yolo11n-pose/yolo11n-pose.fp32.plan (In: images (1, 3, 640, 640), Out: output0 (1, 56, 8400))
 Pipeline execution finished. Processed 300 frames.
-Backend Ingest Telemetry: 300 delivered, 0 failed to http://172.18.32.1:8000/api/pipegen/ingest
+Backend Ingest Telemetry: 300 delivered, 0 failed to http://172.18.32.1:8000/api/pipegen/ingest (HTTP ingestion delivers frame metadata; incidents require zone boundary intrusion)

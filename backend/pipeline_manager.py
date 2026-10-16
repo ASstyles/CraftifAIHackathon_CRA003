@@ -4,6 +4,8 @@ CraftifAI Physical AI Hackathon | Track A: PipeGen
 """
 
 import os
+import sys
+import shutil
 import time
 import json
 import cv2
@@ -115,11 +117,26 @@ class PipelineManager:
         """Check if CraftifAI PipeGen DeepStream container or image is present."""
         try:
             cmd = ["docker", "ps", "-a", "--filter", "name=craftifai", "--format", "{{.Names}}\t{{.Status}}"]
+            if sys.platform == "win32" and shutil.which("docker") is None and shutil.which("wsl") is not None:
+                cmd = ["wsl", "-d", "Ubuntu", "--", "docker", "ps", "-a", "--filter", "name=craftifai", "--format", "{{.Names}}\t{{.Status}}"]
+
             res = subprocess.run(cmd, capture_output=True, text=True, timeout=4)
             running = "craftifai" in res.stdout or self.process_manager.is_running()
+            output = res.stdout.strip()
+
+            img_ready = False
+            if not running:
+                img_cmd = ["docker", "images", "craftifaidocker/deepstream:7.1-amd64-v3", "--format", "{{.Repository}}:{{.Tag}}"]
+                if sys.platform == "win32" and shutil.which("docker") is None and shutil.which("wsl") is not None:
+                    img_cmd = ["wsl", "-d", "Ubuntu", "--", "docker", "images", "craftifaidocker/deepstream:7.1-amd64-v3", "--format", "{{.Repository}}:{{.Tag}}"]
+                res_img = subprocess.run(img_cmd, capture_output=True, text=True, timeout=4)
+                img_ready = "craftifaidocker/deepstream" in res_img.stdout
+
+            container_found = running or len(output) > 0 or img_ready
+            status_desc = "Active" if running else (output if output else ("Image Ready (craftifaidocker/deepstream:7.1-amd64-v3)" if img_ready else "Stopped / Standby"))
             return {
-                "container_found": running or len(res.stdout.strip()) > 0,
-                "container_status": res.stdout.strip() if res.stdout.strip() else ("Active" if running else "Stopped / Standby"),
+                "container_found": container_found,
+                "container_status": status_desc,
                 "pipegen_installed": True,
                 "pipegen_version": "0.5.1",
                 "pipeline_process_active": running

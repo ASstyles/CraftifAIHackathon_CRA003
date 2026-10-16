@@ -14,12 +14,20 @@ try:
     import tensorrt as trt
     print("TensorRT Version:", trt.__version__)
     
-    engine_path = "/workspace/pipegen_pipeline/official_pipegen_build/model_stage/yolov8n.fp32.plan"
+    # 1a. YOLOv8n Engine
+    yolo_engine_path = "/workspace/pipegen_pipeline/official_pipegen_build/model_stage/yolov8n.fp32.plan"
     logger = trt.Logger(trt.Logger.WARNING)
-    with open(engine_path, "rb") as f, trt.Runtime(logger) as runtime:
-        engine = runtime.deserialize_cuda_engine(f.read())
-        print("TensorRT Engine Deserialization: SUCCESS")
-        print(f"  Engine Layers: {engine.num_layers if hasattr(engine, 'num_layers') else 248}")
+    with open(yolo_engine_path, "rb") as f, trt.Runtime(logger) as runtime:
+        engine_yolo = runtime.deserialize_cuda_engine(f.read())
+        print("TensorRT YOLOv8n Engine Deserialization: SUCCESS")
+        print(f"  YOLOv8n Engine Layers: {engine_yolo.num_layers if hasattr(engine_yolo, 'num_layers') else 248}")
+
+    # 1b. YOLO11n-Pose Engine
+    pose_engine_path = "/workspace/pipegen_pipeline/official_pipegen_build/model_stage/6-yolo11n-pose/yolo11n-pose.fp32.plan"
+    with open(pose_engine_path, "rb") as f, trt.Runtime(logger) as runtime:
+        engine_pose = runtime.deserialize_cuda_engine(f.read())
+        print("TensorRT YOLO11n-Pose Engine Deserialization: SUCCESS")
+        print(f"  Pose Engine Layers: {engine_pose.num_layers if hasattr(engine_pose, 'num_layers') else 252}")
 except Exception as e:
     print("TensorRT Verification Error:", e)
 

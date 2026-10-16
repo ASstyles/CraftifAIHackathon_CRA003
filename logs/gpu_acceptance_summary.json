@@ -1,0 +1,93 @@
+{
+  "timestamp_utc": "2026-10-16T21:40:14.087687+00:00",
+  "backend_url": "http://localhost:8000",
+  "environment": {
+    "backend_app": "SentinelVision Industrial Safety AI Pipeline",
+    "backend_version": "0.5.1",
+    "gpu": {
+      "name": "NVIDIA GeForce RTX 2050",
+      "driver": "592.82",
+      "memory_total": "4096 MiB"
+    }
+  },
+  "engines": {
+    "yolov8n": {
+      "path": "C:\\Users\\avira\\Desktop\\New folder (2)\\pipegen_pipeline\\official_pipegen_build\\model_stage\\yolov8n.fp32.plan",
+      "size_bytes": 22299924,
+      "sha256": "6db83b9c05c01b3f007e90cb0789665fc144bf24ad9b7e8a5016c061a7c8036a"
+    },
+    "yolo11n_pose": {
+      "path": "C:\\Users\\avira\\Desktop\\New folder (2)\\pipegen_pipeline\\official_pipegen_build\\model_stage\\6-yolo11n-pose\\yolo11n-pose.fp32.plan",
+      "size_bytes": 18899516,
+      "sha256": "d066c37552488a952f18b502ae856ab3726b61ad3c5c75c7548a42775ba907a7"
+    }
+  },
+  "preflight": {
+    "backend_status": "PASS",
+    "engines_exist": "PASS"
+  },
+  "pipeline_execution": {
+    "returncode": 0,
+    "wall_clock_seconds": 22.915,
+    "frames_processed": 300,
+    "effective_fps": 13.09,
+    "ingestion_delivered": 300,
+    "ingestion_failed": 0
+  },
+  "telemetry_and_events": {
+    "sse_events_captured": 6,
+    "new_incidents_count": 7,
+    "schema_conformant": true,
+    "representative_incident": {
+      "event_type": "restricted_zone_intrusion",
+      "timestamp": "2026-10-16T21:40:44.728206+00:00",
+      "zone_id": "restricted_zone_1",
+      "zone_name": "Robotic Arm Perimeter",
+      "track_id": 1,
+      "confidence": 0.867,
+      "bounding_box": [
+        677.2,
+        298.8,
+        758.7,
+        543.9
+      ],
+      "detection_point": [
+        722.1,
+        522.2
+      ],
+      "contact_source": "pose_ankles",
+      "source": "PipeGen DeepStream GPU Pipeline (Live)",
+      "risk_level": "CRITICAL",
+      "dwell_time_seconds": 6.03,
+      "pipegen_pipeline_id": "pipegen_person_det_v1",
+      "raw_pipegen_meta": {
+        "class_id": 0,
+        "obj_label": "person",
+        "confidence": 0.867,
+        "object_id": 1,
+        "rect_params": {
+          "left": 677.2,
+          "top": 298.8,
+          "width": 81.5,
+          "height": 245.1
+        },
+        "detection_point": [
+          722.1,
+          522.2
+        ],
+        "contact_source": "pose_ankles"
+      }
+    }
+  },
+  "output_video": {
+    "valid": true,
+    "size_bytes": 3852232,
+    "frame_count": 300,
+    "width": 1280,
+    "height": 720,
+    "fps": 30.0,
+    "first_frame_read": true,
+    "last_frame_read": true
+  },
+  "overall_status": "PASS"
+}

@@ -22,6 +22,7 @@ build/
 # Logs and binary packages
 *.log
 !logs/real_gpu_pipeline_run.log
+!logs/gpu_acceptance_run.log
 !docs/evidence/*.log
 .pipegen-state/
 *.deb

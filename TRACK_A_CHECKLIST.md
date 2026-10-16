@@ -4,85 +4,84 @@
 **Participant ID:** CRA003  
 **Target Hardware:** NVIDIA GeForce RTX 2050 Laptop GPU (4 GB VRAM)  
 **Host Environment:** Windows 11 + WSL2 Ubuntu 24.04 LTS  
-**Audit Timestamp:** 2026-10-15  
+**Audit Timestamp:** 2026-10-17  
 
 ---
 
-## Track A Mandatory Deliverables Matrix
+## 1. Track A Mandatory Deliverables Traceability Matrix
 
-| # | Hackathon Track A Requirement | Status | Artifact / Code Evidence | Concrete Verification Details |
-|---|---|---|---|---|
-| **1** | **Requirement Submitted via Official PipeGen** | **PASS** | [`pipegen_pipeline/requirement.txt`](pipegen_pipeline/requirement.txt)<br>[`pipegen_pipeline/official_pipegen_build/RequirementState.json`](pipegen_pipeline/official_pipegen_build/RequirementState.json)<br>[`docs/evidence/EVIDENCE_CATALOG.md`](docs/evidence/EVIDENCE_CATALOG.md) | Submitted to CraftifAI PipeGen v0.5.1 under project `Parallel Webcam Person Detection and Pose` (UUID: `b76a3ca5-5761-42e2-b55c-a37885395116`). Verified graph topology with 8 interconnected nodes. Signed-in PipeGen window captured in [`docs/evidence/pipegen_signin_window.png`](docs/evidence/pipegen_signin_window.png). |
-| **2** | **Pipeline IR Genuinely Generated & Reviewed** | **PASS** | [`pipegen_pipeline/official_pipegen_build/PipelineIR.json`](pipegen_pipeline/official_pipegen_build/PipelineIR.json)<br>[`docs/ARCHITECTURE_AND_CLAIMS_AUDIT.md`](docs/ARCHITECTURE_AND_CLAIMS_AUDIT.md) | Official PipeGen-generated DAG IR defining pipeline stages, tensor shapes (`images`: `[1, 3, 640, 640]`, `output0`: `[1, 56, 8400]`), input/output port bindings, and post-processing NMS logic. Architecture honestly mapped in claims audit. |
-| **3** | **Pretrained Model Selected** | **PASS** | [`pipegen_pipeline/official_pipegen_build/src1/yolov8_pose_parallel/models/`](pipegen_pipeline/official_pipegen_build/src1/yolov8_pose_parallel/models/)<br>[`pipegen_pipeline/MODELS_README.md`](pipegen_pipeline/MODELS_README.md) | Dual parallel architecture selected: `yolov8n.onnx` (12.96 MB, COCO 80-class object detection) and `yolo11n-pose.onnx` (11.89 MB, COCO 17-keypoint skeleton pose estimation for precise ground foot-contact localization). |
-| **4** | **Compiler Executed Successfully** | **PASS** | [`pipegen_pipeline/official_pipegen_build/model_stage/ModelStage.log`](pipegen_pipeline/official_pipegen_build/model_stage/ModelStage.log)<br>[`pipegen_pipeline/official_pipegen_build/model_stage/compile.data.json`](pipegen_pipeline/official_pipegen_build/model_stage/compile.data.json) | PipeGen compiler successfully targeted TensorRT 10.3.0 for NVIDIA RTX 2050 (Compute Capability 8.6). Built 248 TRT layers at FP32 in 5.4s without precision fallback aborts. |
-| **5** | **Required TensorRT Engine Genuinely Generated** | **PASS** | [`pipegen_pipeline/official_pipegen_build/model_stage/yolov8n.fp32.plan`](pipegen_pipeline/official_pipegen_build/model_stage/yolov8n.fp32.plan)<br>[`pipegen_pipeline/official_pipegen_build/model_stage/6-yolo11n-pose/yolo11n-pose.fp32.plan`](pipegen_pipeline/official_pipegen_build/model_stage/6-yolo11n-pose/yolo11n-pose.fp32.plan) | Primary engine: `yolov8n.fp32.plan` (22,299,924 bytes, 248 layers). Pose engine: `yolo11n-pose.fp32.plan` (18,899,516 bytes, 252 layers). Both validated with dynamic tensor I/O inspection and CUDA error checks via TensorRT 10.x API in `detectors.py`. |
-| **6** | **Generated Pipeline Runs Successfully** | **PASS** | [`sentinel_core/launcher.py`](sentinel_core/launcher.py)<br>[`pipegen_pipeline/official_pipegen_build/src1/yolov8_pose_parallel/yolov8_pose.py`](pipegen_pipeline/official_pipegen_build/src1/yolov8_pose_parallel/yolov8_pose.py)<br>[`scripts/run_pipegen_end_to_end.sh`](scripts/run_pipegen_end_to_end.sh)<br>[`logs/real_gpu_pipeline_run.log`](logs/real_gpu_pipeline_run.log) | PipeGen parallel pipeline runner executes end-to-end inside `craftifaidocker/deepstream:7.1-amd64-v3` container with GPU passthrough, writing annotated video (`assets/annotated_pipeline_run.mp4`) and streaming detection metadata via HTTP POST to `/api/pipegen/ingest`. Verified real GPU execution: 300 frames processed, 0 ingestion failures. Launcher features full named argument parsing (`--input`, `--yolo-model`, `--pose-model`, `--output`, `--api-ingest`, `--runtime`, `--no-show`, `--help`), pre-flight checks, and non-zero exit codes. |
-| **7** | **NVIDIA GPU Inference Empirically Verified** | **PASS** | [`pipegen_pipeline/actual_measured_benchmark.json`](pipegen_pipeline/actual_measured_benchmark.json)<br>[`scripts/benchmark_trtexec.sh`](scripts/benchmark_trtexec.sh)<br>[`scripts/parse_trtexec_results.py`](scripts/parse_trtexec_results.py) | Real hardware benchmark using NVIDIA `trtexec` (TRT 10.3.0) on RTX 2050 (UUID `GPU-73dbaf81-29a2-56c6-6b94-477600be6bf7`): YOLOv8n: **194.52 FPS**, **5.06 ms mean latency**, **4.56 ms GPU compute time**, **33.0 MiB VRAM**; YOLO11n-Pose: **60.63 FPS**, **16.40 ms mean latency**, **37.0 MiB VRAM**. Raw logs teed to `logs/` and automatically parsed. |
-| **8** | **Speed Report Contains Reproducible Measurements** | **PASS** | [`pipegen_pipeline/speed_report.md`](pipegen_pipeline/speed_report.md) | Comprehensive report detailing measurement methodology, latency percentiles (min, median, p90, p95, p99, max), power consumption (30.29 W), thermal steady state (56°C), and CPU baseline comparison. Model-only benchmarks strictly distinguished from application pipeline latency. |
-| **9** | **Video Demonstration Supports Claims** | **PASS** | [`assets/annotated_pipeline_run.mp4`](assets/annotated_pipeline_run.mp4)<br>[`assets/workplace_safety_demo.mp4`](assets/workplace_safety_demo.mp4)<br>[`docs/evidence/EVIDENCE_CATALOG.md`](docs/evidence/EVIDENCE_CATALOG.md) | Verified video processed through running pipeline with bounding boxes, keypoints, and safety zones. Keyframes cataloged in `docs/evidence/` with strict provenance. |
-| **10** | **Actionable Structured JSON Output Verified** | **PASS** | [`sentinel_core/models.py`](sentinel_core/models.py)<br>[`tests/test_incident_schema.py`](tests/test_incident_schema.py)<br>[`logs/end_to_end_test_summary.json`](logs/end_to_end_test_summary.json) | Pydantic v2 schema-compliant incident events containing ISO-8601 timestamps, zone identifiers, confidence scores, bounding boxes, foot contact coordinates, risk levels, and dwell time tracking. Validated via end-to-end acceptance script. |
-| **11** | **Pipeline Output Reaches Safety Engine & Dashboard** | **PASS** | [`sentinel_core/pipegen_adapter.py`](sentinel_core/pipegen_adapter.py)<br>[`backend/main.py`](backend/main.py)<br>[`scripts/test_end_to_end.py`](scripts/test_end_to_end.py)<br>[`frontend/src/App.tsx`](frontend/src/App.tsx) | Complete data path verified: Video input → PipeGen inference → `/api/pipegen/ingest` → `PipeGenAdapter` → `ZoneMonitor` → `/api/stream/events` (SSE) → React operations dashboard. All 7 stages passed in `scripts/test_end_to_end.py`. Honest separation between live GPU mode and demo fixture. Metric isolation guaranteed via `POST /api/pipeline/reset-telemetry`. |
-| **12** | **Automated Tests & Frontend Build Executed** | **PASS** | [`tests/`](tests/) (59 automated tests)<br>[`.github/workflows/ci.yml`](.github/workflows/ci.yml)<br>[`frontend/`](frontend/) (Vite + TypeScript) | 59/59 pytest tests pass (100% pass rate covering launcher named CLI flags, TRT safety, metric provenance and reset isolation, geometry, suppression, dwell time, schema, SpatialTracker persistence and occlusion survival, ground contact ankle localization, CORS regex security, payload validation, standalone export bundle integrity, and API). Frontend production build (`npm run build`) builds cleanly with zero errors in 1.32s. CI configured for automated PR/push validation. |
-| **13** | **Architecture & Claims Audit Reconciled** | **PASS** | [`README.md`](README.md)<br>[`docs/ARCHITECTURE_AND_CLAIMS_AUDIT.md`](docs/ARCHITECTURE_AND_CLAIMS_AUDIT.md) | All claims reconciled with real implementation. Removed unsupported "zero-copy" claims (clarified explicit CUDA H2D/D2H transfers); clarified DeepStream GStreamer plugin usage vs custom containerized Python runner; honest telemetry without fake 30 FPS or 14.2 ms defaults. |
-| **14** | **Repository Security & Hygiene Reviewed** | **PASS** | [`.gitignore`](.gitignore)<br>[`scripts/package_export.py`](scripts/package_export.py) | Zero hardcoded passwords, tokens, or API keys. Confirmed no passwordless sudo exception exists. Gitignore properly excludes local cache, virtualenvs, `.plan`, and binary packages, while unignoring tracked execution logs. Clean export zip (21.18 MB). |
-| **15** | **GitHub Repository Release Confirmed** | **PASS** | [`https://github.com/ASstyles/CraftifAIHackathon_CRA003`](https://github.com/ASstyles/CraftifAIHackathon_CRA003) | Synchronized to `origin/main` with clear, descriptive commit message and reproducible instructions. |
+The evaluation statuses below strictly adhere to the following definitions:
+- **PASS**: Verified using direct, reproducible empirical evidence.
+- **PARTIAL**: Evidence or functionality exists, but an external dependency or partial verification gap remains.
+- **FAIL**: A check was performed and failed.
+- **NOT VERIFIED**: Adequate empirical verification could not be performed without external resources.
+- **NOT APPLICABLE**: Genuinely outside the official Track A specification.
+
+| # | Mandatory Track A Requirement | Status | Artifact / Implementation Source | Concrete Evidence Path | Verification Procedure | Known Limitation / Defensibility Note |
+|---|---|:---:|---|---|---|---|
+| **1** | **PipeGen Natural Language Requirement & Workspace State** | **PASS** | [`pipegen_pipeline/requirement.txt`](pipegen_pipeline/requirement.txt)<br>[`pipegen_pipeline/official_pipegen_build/RequirementState.json`](pipegen_pipeline/official_pipegen_build/RequirementState.json) | `pipegen_pipeline/official_pipegen_build/UserInfo.json`<br>`pipegen_pipeline/official_pipegen_build/state.json` | Parsed requirement JSON and verified project UUID `b76a3ca5-5761-42e2-b55c-a37885395116` matching PipeGen v0.5.1 deb package on workstation. | Requirement prompt submitted and processed by PipeGen agent. |
+| **1b** | **Interactive PipeGen DAG Canvas Screenshot** | **PARTIAL** | GUI Desktop Window | [`docs/evidence/pipegen_signin_window.png`](docs/evidence/pipegen_signin_window.png) | Desktop capture of official PipeGen v0.5.1 launcher window (`/opt/PipeGen/PipeGenApp`) under WSLg. | Cloud account authentication was required to load the interactive visual DAG canvas during post-build audit; per hackathon ethics, no synthetic or fabricated screenshot is provided. |
+| **2** | **Pipeline IR Genuinely Generated & Reviewed** | **PASS** | [`pipegen_pipeline/official_pipegen_build/PipelineIR.json`](pipegen_pipeline/official_pipegen_build/PipelineIR.json) | `pipegen_pipeline/craftifai_pipegen_export_CRA003.zip` | JSON schema validation and topological sort: 8 DAG nodes, tensor shapes (`[1, 3, 480, 640]` & `[1, 3, 640, 640]`), port bindings `p01o_frame` → `p08i_frame`. | IR generated natively by PipeGen graph synthesizer. |
+| **3** | **Pretrained Models Selected** | **PASS** | [`pipegen_pipeline/official_pipegen_build/src1/yolov8_pose_parallel/models/`](pipegen_pipeline/official_pipegen_build/src1/yolov8_pose_parallel/models/) | `yolov8n.onnx` (12.96 MB)<br>`yolo11n-pose.onnx` (11.89 MB) | ONNX model inspection: verified 80-class COCO detection head and 17-keypoint skeleton pose head. Verification script: [`scripts/setup_models.sh`](scripts/setup_models.sh). | Models versioned in repository and standalone export bundle. |
+| **4** | **Compiler Executed Successfully** | **PASS** | [`pipegen_pipeline/official_pipegen_build/model_stage/`](pipegen_pipeline/official_pipegen_build/model_stage/) | `ModelStage.log`<br>`compile.data.json`<br>`engine_tactics.json` | Inspection of compilation telemetry: built 248 TRT layers at FP32 targeting NVIDIA Ampere CC 8.6 in 5.4s without precision aborts. | Compiles natively with hardware-specific layer tactics. |
+| **5** | **Required TensorRT Engines Generated** | **PASS** | [`pipegen_pipeline/official_pipegen_build/model_stage/yolov8n.fp32.plan`](pipegen_pipeline/official_pipegen_build/model_stage/yolov8n.fp32.plan)<br>[`pipegen_pipeline/official_pipegen_build/model_stage/6-yolo11n-pose/yolo11n-pose.fp32.plan`](pipegen_pipeline/official_pipegen_build/model_stage/6-yolo11n-pose/yolo11n-pose.fp32.plan) | `detectors.py`<br>`logs/gpu_acceptance_summary.json` | Deserialized and executed on RTX 2050 via TensorRT 10.3 API: YOLOv8n (22,299,924 bytes, sha256 `6db83b...`), YOLO11n-Pose (18,899,516 bytes, sha256 `d066c3...`). | Engines require hardware architecture match (Ampere SM 8.6); fallback scripts provide onnx_cuda_allowed. |
+| **6** | **Generated Pipeline Runs Successfully** | **PASS** | [`pipegen_pipeline/official_pipegen_build/src1/yolov8_pose_parallel/yolov8_pose.py`](pipegen_pipeline/official_pipegen_build/src1/yolov8_pose_parallel/yolov8_pose.py)<br>[`sentinel_core/launcher.py`](sentinel_core/launcher.py) | [`scripts/run_pipegen_end_to_end.sh`](scripts/run_pipegen_end_to_end.sh)<br>[`logs/real_gpu_pipeline_run.log`](logs/real_gpu_pipeline_run.log) | Executed end-to-end in `craftifaidocker/deepstream:7.1-amd64-v3` container on RTX 2050: processed 300 frames, 300 ingestion deliveries, 0 failures. | Python runner uses explicit CUDA host/device copies; greedy IoU tracker can swap IDs during severe occlusions. |
+| **7** | **NVIDIA GPU Inference Empirically Verified** | **PASS** | [`scripts/benchmark_trtexec.sh`](scripts/benchmark_trtexec.sh)<br>[`scripts/benchmark_pose_trtexec.sh`](scripts/benchmark_pose_trtexec.sh) | [`pipegen_pipeline/actual_measured_benchmark.json`](pipegen_pipeline/actual_measured_benchmark.json)<br>[`logs/trt_benchmark_yolov8n.log`](logs/trt_benchmark_yolov8n.log) | Standardized `trtexec` benchmark on RTX 2050 (GPU-73dbaf81): YOLOv8n: **194.52 FPS**, **5.06 ms mean**, **4.56 ms GPU compute**; YOLO11n-Pose: **60.63 FPS**, **16.40 ms mean**, **15.83 ms GPU compute**. | Model inference benchmark measured separately from end-to-end host video pipeline. |
+| **8** | **Speed Report Contains Reproducible Measurements** | **PASS** | [`pipegen_pipeline/speed_report.md`](pipegen_pipeline/speed_report.md) | `pipegen_pipeline/actual_measured_benchmark.json`<br>[`scripts/benchmark_audit.py`](scripts/benchmark_audit.py) | Full latency breakdown across percentiles (p50, p90, p95, p99), power draw (30.29 W), thermal baseline (56°C), and CPU host comparative baseline (265.26 FPS). | Strictly differentiates pure GPU model latency from application-level web/rendering latency. |
+| **9** | **Video Demonstration Supports Claims** | **PASS** | [`assets/workplace_safety_demo.mp4`](assets/workplace_safety_demo.mp4)<br>[`assets/annotated_pipeline_run.mp4`](assets/annotated_pipeline_run.mp4) | `assets/pipeline_run_frame.jpg`<br>`assets/pipeline_intrusion_frame.jpg` | 300-frame annotated output video validated with `cv2.VideoCapture`: 1280x720 @ 30 FPS, first and last frame decodable, displaying real bounding boxes, pose skeletons, ankle coordinates, and zone overlays. | Monocular camera view without physical hardware relay cutoff. |
+| **10** | **Actionable Structured JSON Output Verified** | **PASS** | [`sentinel_core/models.py`](sentinel_core/models.py)<br>[`sentinel_core/pipegen_adapter.py`](sentinel_core/pipegen_adapter.py) | `tests/test_incident_schema.py`<br>`logs/gpu_acceptance_summary.json` | Validated Pydantic v2 `SafetyIncident` schema: event type, timestamp, zone ID, track ID, bounding box, detection point, contact source (`pose_ankles`), dwell duration, and risk level. | Validated on both synthetic acceptance fixtures and live GPU pipeline execution. |
+| **11** | **Pipeline Output Reaches Safety Engine & Dashboard** | **PASS** | [`backend/main.py`](backend/main.py)<br>[`sentinel_core/zone_monitor.py`](sentinel_core/zone_monitor.py)<br>[`frontend/src/App.tsx`](frontend/src/App.tsx) | [`docs/evidence/live_dashboard_gpu_run.png`](docs/evidence/live_dashboard_gpu_run.png)<br>[`logs/gpu_acceptance_summary.json`](logs/gpu_acceptance_summary.json) | Complete real data path executed: Container TRT inference → HTTP ingestion (`/api/pipegen/ingest`) → `ZoneMonitor` → Incident Event → SSE stream (`/api/stream/events`) → Live React Dashboard. 6 SSE events received, 7 incidents logged, live screenshot captured. | HTTP delivery confirms per-frame metadata ingestion; incident generation occurs when worker contacts restricted zone polygon. |
+| **12** | **Automated Tests & Frontend Build Executed** | **PASS** | [`tests/`](tests/) (59 unit/integration tests)<br>[`frontend/`](frontend/) (Vite + TypeScript) | [`junit-test-results.xml`](junit-test-results.xml)<br>[`.github/workflows/ci.yml`](.github/workflows/ci.yml) | 59/59 pytest tests pass in 24.36s (covering CLI flags, TRT safety, metric provenance, geometry, ankle localization, SpatialTracker persistence, suppression, schema, CORS regex, malformed input, export zip). Frontend builds cleanly with zero errors in 12.72s (`dist/assets/`). | CPU CI runs automated tests on every push/PR; GPU job is guarded for self-hosted execution. |
+| **13** | **Architecture & Claims Audit Reconciled** | **PASS** | [`docs/ARCHITECTURE_AND_CLAIMS_AUDIT.md`](docs/ARCHITECTURE_AND_CLAIMS_AUDIT.md)<br>[`README.md`](README.md) | Repository-wide codebase audit | All technical overclaims eliminated: corrected "zero-copy" to explicit CUDA transfers; corrected "DeepStream pipeline" to Python container runner; corrected "guaranteed track IDs" to greedy IoU association; differentiated model vs full pipeline latency; verified HTTP ingest vs incident logic. | Audit document provides full transparency into architecture boundaries. |
+| **14** | **Repository Security & Hygiene Reviewed** | **PASS** | [`.gitignore`](.gitignore)<br>[`scripts/package_export.py`](scripts/package_export.py) | Codebase git search and audit | Zero secrets, tokens, or private keys committed. PII and temporary build scratch files excluded via `.gitignore`. CORS origin restricted to local origins. Standalone export zip integrity verified. | No sensitive credentials in repository. |
+| **15** | **Standalone Export Bundle Integrity** | **PASS** | [`pipegen_pipeline/craftifai_pipegen_export_CRA003.zip`](pipegen_pipeline/craftifai_pipegen_export_CRA003.zip) | [`tests/test_export_bundle.py`](tests/test_export_bundle.py) | Automated archive integrity test: verified valid zip (21.17 MB), 47 files, non-corrupted, containing `PipelineIR.json`, `RequirementState.json`, `ModelStage.log`, `compile.data.json`, `yolov8_pose.py`, and ONNX models. | Large `.plan` engine files excluded from zip per export standards; generated on-target via `compile_engines.sh`. |
 
 ---
 
-## Reproduction Commands
+## 2. Hardware Acceptance Summary (Reproducible Run)
 
-### 1. Acquire Models & Compile Native TensorRT Engines (Local GPU)
-```bash
-# Verify/download ONNX models
-bash scripts/setup_models.sh
+Executed via: `python scripts/run_gpu_acceptance.py`  
+Derived Summary: [`logs/gpu_acceptance_summary.json`](logs/gpu_acceptance_summary.json)  
 
-# Compile hardware-matched TensorRT .plan engines (requires NVIDIA GPU & Docker)
-bash scripts/compile_engines.sh
-```
+- **Host GPU:** NVIDIA GeForce RTX 2050 Laptop GPU (4,096 MiB VRAM, Driver 592.82, CC 8.6)
+- **Container Runtime:** `craftifaidocker/deepstream:7.1-amd64-v3` with GPU passthrough
+- **Engines:**
+  - `yolov8n.fp32.plan`: 22,299,924 bytes (SHA-256: `6db83b9c05c01b3f007e90cb0789665fc144bf24ad9b7e8a5016c061a7c8036a`)
+  - `yolo11n-pose.fp32.plan`: 18,899,516 bytes (SHA-256: `d066c37552488a952f18b502ae856ab3726b61ad3c5c75c7548a42775ba907a7`)
+- **Execution Performance:**
+  - 300 / 300 frames processed in 22.92s wall-clock (13.09 effective container FPS)
+  - 300 / 300 HTTP ingestion deliveries to `/api/pipegen/ingest` (0 failed)
+  - 6 SSE live events received on `/api/stream/events`
+  - 7 safety incidents triggered during worker intrusion into Restricted Zone 1 (Automated Cell 04)
+  - Representative Incident: `zone_id: "restricted_zone_1"`, `track_id: 1`, `contact_source: "pose_ankles"`, `risk_level: "CRITICAL"`, `dwell_time_seconds: 6.03`
+- **Output Video:** `assets/annotated_pipeline_run.mp4` (3,852,232 bytes, 300 frames, 1280x720 @ 30.0 FPS, playable)
+- **Overall Status:** **PASS**
 
-### 2. Run Automated Test Suite (59 Tests)
+---
+
+## 3. Reproduction Commands
+
+### 1. Execute Fast Automated Test Suite (59 Tests, CPU Only)
 ```bash
 python -m pytest tests/ -v
 ```
 
-### 3. Run End-to-End Event Path Acceptance Test
+### 2. Execute End-to-End Functional Acceptance Test (Synthetic Ingestion Fixtures)
 ```bash
 python scripts/test_end_to_end.py
 ```
 
-### 4. Run trtexec GPU Benchmark on Target Hardware
+### 3. Execute Reproducible Hardware GPU Integration Run (RTX 2050 + Container)
 ```bash
-# Benchmark YOLOv8n detector
-bash scripts/benchmark_trtexec.sh
+# Terminal 1: Start backend
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
 
-# Benchmark YOLO11n-pose estimator
-bash scripts/benchmark_pose_trtexec.sh
+# Terminal 2: Run GPU acceptance test
+python scripts/run_gpu_acceptance.py
 ```
 
-### 5. Build Frontend Production Bundle
+### 4. Build Frontend Production Bundle
 ```bash
 cd frontend
 npm run build
-```
-
-### 6. Start Backend & Dashboard
-```bash
-# Terminal 1: Backend
-uvicorn backend.main:app --host 0.0.0.0 --port 8000
-
-# Terminal 2: Frontend
-cd frontend
-npm run dev
-```
-
-### 7. Run Official PipeGen GPU Inference Pipeline
-```bash
-# Canonical launcher with named arguments and explicit runtime requirement
-bash scripts/run_pipegen_end_to_end.sh \
-  --input assets/workplace_safety_demo.mp4 \
-  --runtime tensorrt_required \
-  --api-ingest http://localhost:8000/api/pipegen/ingest \
-  --output assets/annotated_pipeline_run.mp4 \
-  --no-show
 ```

@@ -141,8 +141,12 @@ to_container_path() {
         echo "$p"
     elif [[ "$p" =~ ^${WORKSPACE}/(.*) ]]; then
         echo "/workspace/${BASH_REMATCH[1]}"
-    else
+    elif [[ "$p" = /* ]]; then
         echo "$p"
+    elif [[ "$p" =~ ^[0-9]+$ ]] || [[ "$p" =~ ^rtsp:// ]] || [[ "$p" =~ ^http:// ]] || [[ "$p" =~ ^https:// ]]; then
+        echo "$p"
+    else
+        echo "/workspace/${p}"
     fi
 }
 
