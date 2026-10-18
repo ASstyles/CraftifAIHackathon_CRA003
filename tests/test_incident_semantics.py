@@ -289,8 +289,7 @@ def test_regression_update_events_not_counted_as_new_creations():
     assert len(monitor.incident_history) == 1
 
 
-@pytest.mark.asyncio
-async def test_regression_sse_events_delivery_count_and_no_loss():
+def test_regression_sse_events_delivery_count_and_no_loss():
     """
     Regression Test 4: SSE events are neither lost nor duplicated.
     Fails if subscriber queue receives fewer or more events than total creations + updates.
@@ -299,50 +298,53 @@ async def test_regression_sse_events_delivery_count_and_no_loss():
     from backend.pipeline_manager import PipelineManager
     import os
 
-    workspace_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    mgr = PipelineManager(workspace_dir=workspace_dir)
-    mgr.mode = "live"
-    mgr.zone_monitor.clear_zones()
-    mgr.zone_monitor.clear_incidents_and_tracks()
+    async def _run_test():
+        workspace_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        mgr = PipelineManager(workspace_dir=workspace_dir)
+        mgr.mode = "live"
+        mgr.zone_monitor.clear_zones()
+        mgr.zone_monitor.clear_incidents_and_tracks()
 
-    zone = RestrictedZone(
-        zone_id="test_sse_zone",
-        name="SSE Validation Zone",
-        polygon=[[0.0, 0.0], [200.0, 0.0], [200.0, 200.0], [0.0, 200.0]],
-        cooldown_seconds=2.0
-    )
-    mgr.zone_monitor.add_zone(zone)
+        zone = RestrictedZone(
+            zone_id="test_sse_zone",
+            name="SSE Validation Zone",
+            polygon=[[0.0, 0.0], [200.0, 0.0], [200.0, 200.0], [0.0, 200.0]],
+            cooldown_seconds=2.0
+        )
+        mgr.zone_monitor.add_zone(zone)
 
-    # Register an SSE subscriber queue
-    q = await mgr.register_subscriber()
+        # Register an SSE subscriber queue
+        q = await mgr.register_subscriber()
 
-    det = Detection(track_id=88, confidence=0.96, bounding_box=[20.0, 20.0, 60.0, 100.0])
+        det = Detection(track_id=88, confidence=0.96, bounding_box=[20.0, 20.0, 60.0, 100.0])
 
-    # Trigger 1 creation (t=10.0) and 2 updates (t=13.0, t=16.0)
-    for t in [10.0, 13.0, 16.0]:
-        incidents = mgr.zone_monitor.process_detections([det], frame_timestamp=t)
-        for inc in incidents:
-            await mgr.broadcast_incident(inc)
+        # Trigger 1 creation (t=10.0) and 2 updates (t=13.0, t=16.0)
+        for t in [10.0, 13.0, 16.0]:
+            incidents = mgr.zone_monitor.process_detections([det], frame_timestamp=t)
+            for inc in incidents:
+                await mgr.broadcast_incident(inc)
 
-    # Collect events from subscriber queue
-    received = []
-    while not q.empty():
-        item = q.get_nowait()
-        received.append(json.loads(item))
+        # Collect events from subscriber queue
+        received = []
+        while not q.empty():
+            item = q.get_nowait()
+            received.append(json.loads(item))
 
-    mgr.unregister_subscriber(q)
+        mgr.unregister_subscriber(q)
 
-    # Expected: exactly 3 events received (1 creation + 2 updates)
-    assert len(received) == 3
-    assert received[0]["action"] == "created"
-    assert received[0]["update_seq"] == 0
-    assert received[1]["action"] == "updated"
-    assert received[1]["update_seq"] == 1
-    assert received[2]["action"] == "updated"
-    assert received[2]["update_seq"] == 2
+        # Expected: exactly 3 events received (1 creation + 2 updates)
+        assert len(received) == 3
+        assert received[0]["action"] == "created"
+        assert received[0]["update_seq"] == 0
+        assert received[1]["action"] == "updated"
+        assert received[1]["update_seq"] == 1
+        assert received[2]["action"] == "updated"
+        assert received[2]["update_seq"] == 2
 
-    # All share the exact same incident_id
-    assert received[0]["incident_id"] == received[1]["incident_id"] == received[2]["incident_id"]
+        # All share the exact same incident_id
+        assert received[0]["incident_id"] == received[1]["incident_id"] == received[2]["incident_id"]
+
+    asyncio.run(_run_test())
 
 
 def test_regression_event_order_and_update_sequence_strictly_monotonic():
