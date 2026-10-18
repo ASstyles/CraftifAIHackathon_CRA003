@@ -1,11 +1,12 @@
 {
-  "timestamp_utc": "2026-10-18T07:24:51.348574+00:00",
+  "timestamp_utc": "2026-10-18T07:49:02.344051+00:00",
   "stages": {
     "1_zone_creation": "PASS",
     "2_mode_switch_live": "PASS",
     "3_safe_frame_ingestion": "PASS",
     "4_intrusion_frame_ingestion": "PASS",
     "5_duplicate_suppression": "PASS",
+    "5b_dwell_update": "PASS",
     "6_schema_compliance": "PASS",
     "7_cleanup": "PASS"
   },

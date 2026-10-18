@@ -135,6 +135,31 @@ def run_e2e_acceptance_test():
     results["stages"]["5_duplicate_suppression"] = "PASS"
     print("[PASS] Stage 5: Duplicate alert spam suppressed during active cooldown")
 
+    # Stage 5b: Ingest Frame After Cooldown (Dwell Update Verification)
+    time.sleep(2.1)
+    update_payload = {
+        "frame_num": 115,
+        "source_id": 0,
+        "inference_backend": "SYNTHETIC_ACCEPTANCE_FIXTURE",
+        "inference_latency_ms": 5.05,
+        "objects": [
+            {
+                "class_id": 0,
+                "obj_label": "person",
+                "confidence": 0.96,
+                "object_id": 1,
+                "rect_params": {"left": 560.0, "top": 355.0, "width": 100.0, "height": 220.0},
+                "detection_point": [610.0, 575.0],
+                "contact_source": "pose_ankles"
+            }
+        ]
+    }
+    res_update = client.post("/api/pipegen/ingest", json=update_payload)
+    assert res_update.status_code == 200
+    assert res_update.json()["incidents_triggered"] >= 1, "Post-cooldown frame failed to trigger dwell update"
+    results["stages"]["5b_dwell_update"] = "PASS"
+    print("[PASS] Stage 5b: Post-cooldown intrusion frame triggered periodic dwell update")
+
     # Stage 6: Verify Incident Ingestion via API & Schema Compliance
     res_incidents = client.get("/api/incidents?limit=5")
     assert res_incidents.status_code == 200
@@ -151,12 +176,28 @@ def run_e2e_acceptance_test():
     assert parsed_incident.track_id == 1
     assert parsed_incident.contact_source == "pose_ankles"
     assert parsed_incident.risk_level == "CRITICAL"
+    assert parsed_incident.incident_id is not None
+    assert parsed_incident.incident_id.startswith("inc_e2e_robotic_perimeter_")
+    assert parsed_incident.action == "updated"
+    assert parsed_incident.is_update is True
+    assert parsed_incident.update_seq >= 1
+    assert parsed_incident.dwell_time_seconds >= 2.0
+
+    # Also verify statistics endpoint separates creations vs updates
+    res_stats = client.get("/api/incidents/stats")
+    assert res_stats.status_code == 200
+    stats = res_stats.json()
+    assert stats["incidents_created"] >= 1
+    assert stats["incident_updates"] >= 1
+    assert stats["total_incidents"] >= 1
+
     results["stages"]["6_schema_compliance"] = "PASS"
-    print(f"[PASS] Stage 6: Incident schema verified: {parsed_incident.event_type} (Zone: {parsed_incident.zone_id}, Track: {parsed_incident.track_id})")
+    print(f"[PASS] Stage 6: Incident schema verified: {parsed_incident.event_type} (Zone: {parsed_incident.zone_id}, Track: {parsed_incident.track_id}, Action: {parsed_incident.action}, UpdateSeq: {parsed_incident.update_seq})")
 
     # Stage 7: Clean up test zone and reset telemetry
     client.delete("/api/zones/e2e_robotic_perimeter")
     client.post("/api/pipeline/reset-telemetry")
+    client.post("/api/pipeline/reset-incidents")
     res_clean_metrics = client.get("/api/metrics")
     assert res_clean_metrics.status_code == 200
     metrics_data = res_clean_metrics.json()

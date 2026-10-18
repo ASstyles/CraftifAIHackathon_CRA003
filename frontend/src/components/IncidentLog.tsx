@@ -37,7 +37,7 @@ export const IncidentLog: React.FC<IncidentLogProps> = ({ incidents }) => {
             Incident Audit Log
           </h2>
           <span className="badge badge-danger" style={{ fontSize: '0.7rem' }}>
-            {incidents.length} Events
+            {incidents.length} Incidents
           </span>
         </div>
 

@@ -199,7 +199,7 @@ def reset_pipeline_incidents():
     """Clear all incident history, active track states, and statistics for test isolation."""
     pipeline_mgr.zone_monitor.clear_incidents_and_tracks()
     pipeline_mgr.latest_incident = None
-    return {"status": "success", "message": "Incident history and active tracks reset"}
+    return {"status": "success", "incidents_cleared": True, "message": "Incident history and active tracks reset"}
 
 
 @app.post("/api/pipeline/start")

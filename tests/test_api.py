@@ -175,3 +175,31 @@ def test_pipeline_control_endpoints():
     assert "status" in res_stop.json()
 
 
+def test_reset_incidents_endpoint():
+    """Verify POST /api/pipeline/reset-incidents clears recorded incident episodes."""
+    res = client.post("/api/pipeline/reset-incidents")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert data["incidents_cleared"] is True
+
+    # Verify incidents list is now empty
+    res_list = client.get("/api/incidents")
+    assert res_list.status_code == 200
+    assert len(res_list.json()) == 0
+
+
+def test_incidents_stats_endpoint():
+    """Verify GET /api/incidents/stats provides separate created and update metrics."""
+    res = client.get("/api/incidents/stats")
+    assert res.status_code == 200
+    stats = res.json()
+    assert "total_incidents" in stats
+    assert "incidents_created" in stats
+    assert "incident_updates" in stats
+    assert "active_intrusions" in stats
+    assert "by_zone" in stats
+    assert "by_risk" in stats
+
+
+
