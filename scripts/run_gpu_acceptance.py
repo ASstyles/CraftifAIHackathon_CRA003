@@ -202,26 +202,45 @@ def run_gpu_acceptance(backend_url: str = "http://localhost:8000", max_frames: i
     except Exception as e:
         acceptance_summary["environment"]["gpu"] = {"status": f"nvidia-smi error: {e}"}
 
-    # Step 4: Reset backend telemetry, isolate incidents, and switch mode to LIVE
-    print("[*] Resetting backend telemetry and configuring LIVE mode...")
+    # Step 4: Configure LIVE mode FIRST, then reset telemetry and isolate incidents
+    run_id = f"gpu_acc_run_{int(time.time())}"
+    acceptance_summary["run_id"] = run_id
+    print(f"\n[*] Initializing isolated acceptance run '{run_id}'...")
+    print("[*] Switching backend mode to LIVE first (halting background demo simulation)...")
     try:
-        req_reset = Request(f"{backend_url}/api/pipeline/reset-telemetry?reset_incidents=true", data=b"", headers={"User-Agent": "AcceptanceRunner"})
-        urlopen(req_reset, timeout=5)
+        req_mode = Request(
+            f"{backend_url}/api/mode",
+            data=json.dumps({"mode": "live"}).encode("utf-8"),
+            headers={"Content-Type": "application/json", "User-Agent": "AcceptanceRunner"}
+        )
+        urlopen(req_mode, timeout=5)
+        # Give background asyncio loop 150ms to yield and halt demo frame simulation
+        time.sleep(0.15)
+
+        # Clear all incident history, active track states, and statistics for clean test isolation
         req_reset_inc = Request(f"{backend_url}/api/pipeline/reset-incidents", data=b"", headers={"User-Agent": "AcceptanceRunner"})
         urlopen(req_reset_inc, timeout=5)
-        req_mode = Request(f"{backend_url}/api/mode", data=json.dumps({"mode": "live"}).encode("utf-8"), headers={"Content-Type": "application/json"})
-        urlopen(req_mode, timeout=5)
+        req_reset = Request(f"{backend_url}/api/pipeline/reset-telemetry?reset_incidents=true", data=b"", headers={"User-Agent": "AcceptanceRunner"})
+        urlopen(req_reset, timeout=5)
     except Exception as e:
-        print(f"[WARN] Failed to reset telemetry: {e}")
+        print(f"[WARN] Failed during mode switch or reset: {e}")
 
-    # Fetch initial incident count
+    # Fetch initial incident count and ensure clean baseline (0 initial incidents)
     initial_incidents = []
-    try:
-        with urlopen(f"{backend_url}/api/incidents?limit=100", timeout=5) as r:
-            initial_incidents = json.loads(r.read().decode("utf-8"))
-    except Exception:
-        pass
+    for _ in range(3):
+        try:
+            with urlopen(f"{backend_url}/api/incidents?limit=100", timeout=5) as r:
+                initial_incidents = json.loads(r.read().decode("utf-8"))
+            if len(initial_incidents) == 0:
+                break
+            req_reset_inc = Request(f"{backend_url}/api/pipeline/reset-incidents", data=b"", headers={"User-Agent": "AcceptanceRunner"})
+            urlopen(req_reset_inc, timeout=5)
+            time.sleep(0.1)
+        except Exception:
+            pass
+
     initial_incident_count = len(initial_incidents)
+    print(f"[*] Pre-run baseline verified: {initial_incident_count} pre-existing incidents")
 
     # Step 5: Start SSE Listener Thread with Ready Handshake Synchronization
     sse_stop_event = threading.Event()
@@ -266,6 +285,15 @@ def run_gpu_acceptance(backend_url: str = "http://localhost:8000", max_frames: i
     proc = subprocess.run(run_cmd, capture_output=True, text=True)
     t_end = time.perf_counter()
     elapsed_wall = t_end - t_start
+
+    # If WSL threw a transient launch error, retry once after a short rest
+    if proc.returncode != 0 and elapsed_wall < 3.0 and ("Wsl/Service" in (proc.stdout + proc.stderr) or "Catastrophic failure" in (proc.stdout + proc.stderr)):
+        print("[WARN] Transient WSL service error encountered. Retrying execution in 2.5s...")
+        time.sleep(2.5)
+        t_start = time.perf_counter()
+        proc = subprocess.run(run_cmd, capture_output=True, text=True)
+        t_end = time.perf_counter()
+        elapsed_wall = t_end - t_start
 
     stdout_text = proc.stdout
     stderr_text = proc.stderr
@@ -314,9 +342,6 @@ def run_gpu_acceptance(backend_url: str = "http://localhost:8000", max_frames: i
     while not sse_queue.empty():
         sse_events.append(sse_queue.get_nowait())
 
-    acceptance_summary["telemetry_and_events"]["sse_events_captured"] = len(sse_events)
-    print(f"[PASS] SSE Events Received during run: {len(sse_events)}")
-
     # Fetch incidents and statistics post-run
     post_incidents = []
     stats_data = {}
@@ -328,23 +353,43 @@ def run_gpu_acceptance(backend_url: str = "http://localhost:8000", max_frames: i
     except Exception as e:
         print(f"[WARN] Failed to fetch post-run incidents or stats: {e}")
 
-    new_incidents = post_incidents[:max(0, len(post_incidents) - initial_incident_count)]
-    acceptance_summary["telemetry_and_events"]["sse_events_captured"] = len(sse_events)
-    acceptance_summary["telemetry_and_events"]["new_incidents_count"] = len(new_incidents)
-    acceptance_summary["telemetry_and_events"]["incidents_created"] = stats_data.get("incidents_created", len(new_incidents))
-    acceptance_summary["telemetry_and_events"]["incident_updates"] = stats_data.get("incident_updates", 0)
-    acceptance_summary["telemetry_and_events"]["total_incidents_recorded"] = stats_data.get("total_incidents", len(post_incidents))
+    # Derive separate metrics with unambiguous semantic definitions:
+    # 1. unique_incident_ids: distinct incident episode IDs in this run
+    unique_ids = list(dict.fromkeys(inc["incident_id"] for inc in post_incidents))
+    unique_incident_ids_count = len(unique_ids)
 
-    print(f"[*] Incident Telemetry Breakdown:")
-    print(f"    - Distinct Incidents Created : {acceptance_summary['telemetry_and_events']['incidents_created']}")
-    print(f"    - Periodic Dwell Updates     : {acceptance_summary['telemetry_and_events']['incident_updates']}")
-    print(f"    - Total Real-Time SSE Events : {len(sse_events)}")
+    # 2. incident_creations_count: initial intrusion operations (action='created', update_seq=0)
+    incident_creations_count = stats_data.get("incidents_created", unique_incident_ids_count)
+
+    # 3. incident_updates_count: periodic dwell notification operations (action='updated', update_seq>0)
+    incident_updates_count = stats_data.get("incident_updates", 0)
+
+    # 4. sse_events_captured: total real-time events delivered to SSE stream listener
+    sse_events_captured = len(sse_events)
+
+    # 5. dashboard_visible_incidents_count: unique cards visible on frontend dashboard (deduplicated by stable incident_id)
+    dashboard_visible_incidents_count = len(post_incidents)
+
+    # Mathematical and semantic reconciliation
+    # Every intrusion episode triggers 1 creation event. Every subsequent dwell cycle triggers 1 update event.
+    # Total SSE events emitted = creations + updates.
+    sse_reconciled = (sse_events_captured == (incident_creations_count + incident_updates_count))
+    creations_reconciled = (unique_incident_ids_count == incident_creations_count)
+    dashboard_reconciled = (dashboard_visible_incidents_count == unique_incident_ids_count)
+
+    print(f"\n[*] Incident Telemetry Breakdown & Reconciliation:")
+    print(f"    - Unique Incident Episodes   : {unique_incident_ids_count}")
+    print(f"    - Incident Creation Events   : {incident_creations_count}")
+    print(f"    - Periodic Dwell Updates     : {incident_updates_count}")
+    print(f"    - Total Real-Time SSE Events : {sse_events_captured} (Expected: {incident_creations_count + incident_updates_count})")
+    print(f"    - Dashboard Visible Cards    : {dashboard_visible_incidents_count}")
+    print(f"    - Reconciliation Verified    : SSE Reconciled={sse_reconciled}, Creations Reconciled={creations_reconciled}")
 
     # Validate Schema of generated incidents
     schema_pass = True
     representative_incident = None
-    if new_incidents:
-        representative_incident = new_incidents[0]
+    if post_incidents:
+        representative_incident = post_incidents[0]
         try:
             SafetyIncident(**representative_incident)
             print(f"[PASS] Incident Schema Validated: Zone '{representative_incident.get('zone_id')}', Track #{representative_incident.get('track_id')}, Risk: {representative_incident.get('risk_level')}")
@@ -352,10 +397,34 @@ def run_gpu_acceptance(backend_url: str = "http://localhost:8000", max_frames: i
             schema_pass = False
             print(f"[FAIL] Incident Schema Error: {e}")
     else:
-        print("[INFO] No new intrusion incidents generated (worker did not penetrate zone during this clip).")
+        print("[INFO] No intrusion incidents generated.")
 
-    acceptance_summary["telemetry_and_events"]["schema_conformant"] = schema_pass
-    acceptance_summary["telemetry_and_events"]["representative_incident"] = representative_incident
+    acceptance_summary["telemetry_and_events"] = {
+        "run_id": run_id,
+        "unique_incident_ids_count": unique_incident_ids_count,
+        "incident_creations_count": incident_creations_count,
+        "incident_updates_count": incident_updates_count,
+        "sse_events_captured": sse_events_captured,
+        "dashboard_visible_incidents_count": dashboard_visible_incidents_count,
+        "new_incidents_count": unique_incident_ids_count,
+        "incidents_created": incident_creations_count,
+        "incident_updates": incident_updates_count,
+        "total_incidents_recorded": len(post_incidents),
+        "metric_definitions": {
+            "unique_incident_ids_count": "Number of unique incident episode IDs generated during this isolated run",
+            "incident_creations_count": "Number of initial safety zone penetration events (action=created, update_seq=0)",
+            "incident_updates_count": "Number of post-cooldown dwell notification events (action=updated, update_seq>0)",
+            "sse_events_captured": "Total real-time SSE stream events delivered to test client (creations + updates)",
+            "dashboard_visible_incidents_count": "Number of unique incident cards rendered on the frontend dashboard table"
+        },
+        "reconciliation": {
+            "creations_plus_updates_equal_sse": sse_reconciled,
+            "unique_ids_equal_creations": creations_reconciled,
+            "unique_ids_equal_dashboard_visible": dashboard_reconciled
+        },
+        "schema_conformant": schema_pass,
+        "representative_incident": representative_incident
+    }
 
     # Step 8: Validate Output Video
     video_validation = validate_output_video(output_video_host)
@@ -373,6 +442,8 @@ def run_gpu_acceptance(backend_url: str = "http://localhost:8000", max_frames: i
         and ingest_failed == 0
         and video_validation["valid"]
         and schema_pass
+        and sse_reconciled
+        and creations_reconciled
     ):
         acceptance_summary["overall_status"] = "PASS"
         print("\n==========================================================================")

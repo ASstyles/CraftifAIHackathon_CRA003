@@ -168,3 +168,274 @@ def test_safety_incident_json_roundtrip_with_episode_fields():
     assert rebuilt.incident_id == incident.incident_id
     assert rebuilt.update_seq == 3
     assert rebuilt.is_update is True
+
+
+# =========================================================================
+# Blocker 2 Deterministic Regression Tests
+# =========================================================================
+
+def test_regression_incident_ids_never_duplicated_across_distinct_tracks():
+    """
+    Regression Test 1: Incident IDs are never duplicated unexpectedly across distinct tracks or zones.
+    Fails if distinct intrusion episodes collide on the same incident_id.
+    """
+    monitor = ZoneMonitor(source_name="test_runner", load_defaults=False)
+    zone1 = RestrictedZone(
+        zone_id="zone_robot_1",
+        name="Robot Zone 1",
+        polygon=[[0.0, 0.0], [100.0, 0.0], [100.0, 100.0], [0.0, 100.0]],
+        cooldown_seconds=2.0
+    )
+    zone2 = RestrictedZone(
+        zone_id="zone_robot_2",
+        name="Robot Zone 2",
+        polygon=[[200.0, 200.0], [300.0, 200.0], [300.0, 300.0], [200.0, 300.0]],
+        cooldown_seconds=2.0
+    )
+    monitor.add_zone(zone1)
+    monitor.add_zone(zone2)
+
+    dets = [
+        Detection(track_id=1, confidence=0.92, bounding_box=[10.0, 10.0, 50.0, 80.0]),
+        Detection(track_id=2, confidence=0.91, bounding_box=[20.0, 20.0, 60.0, 90.0]),
+        Detection(track_id=3, confidence=0.88, bounding_box=[210.0, 210.0, 250.0, 280.0]),
+    ]
+
+    incidents = monitor.process_detections(dets, frame_timestamp=100.0)
+    assert len(incidents) == 3
+
+    incident_ids = [inc.incident_id for inc in incidents]
+    # All IDs must be unique
+    assert len(set(incident_ids)) == len(incident_ids) == 3
+
+    # IDs must contain zone_id and track_id
+    assert "zone_robot_1_t1" in incident_ids[0]
+    assert "zone_robot_1_t2" in incident_ids[1]
+    assert "zone_robot_2_t3" in incident_ids[2]
+
+
+def test_regression_creation_counts_agree_with_actual_records():
+    """
+    Regression Test 2: Creation counts agree strictly with actual creation records.
+    Fails if total_incidents_created does not match observed initial creation events.
+    """
+    monitor = ZoneMonitor(source_name="test_runner", load_defaults=False)
+    zone = RestrictedZone(
+        zone_id="press_zone",
+        name="Hydraulic Press",
+        polygon=[[0.0, 0.0], [200.0, 0.0], [200.0, 200.0], [0.0, 200.0]],
+        cooldown_seconds=2.0
+    )
+    monitor.add_zone(zone)
+
+    dets = [
+        Detection(track_id=10, confidence=0.95, bounding_box=[20.0, 20.0, 50.0, 80.0]),
+        Detection(track_id=20, confidence=0.93, bounding_box=[30.0, 30.0, 60.0, 90.0]),
+    ]
+
+    # Two workers enter at t=10.0
+    created_events = monitor.process_detections(dets, frame_timestamp=10.0)
+    assert len(created_events) == 2
+
+    stats = monitor.get_incident_counts()
+    assert stats["incidents_created"] == 2
+    assert stats["incident_updates"] == 0
+    assert stats["total_incidents"] == 2
+
+    # Verify directly against history records
+    recorded_creations = [inc for inc in monitor.incident_history if inc.action == "created" or inc.update_seq == 0]
+    assert len(recorded_creations) == stats["incidents_created"]
+
+
+def test_regression_update_events_not_counted_as_new_creations():
+    """
+    Regression Test 3: Update events are NEVER counted as newly created incidents.
+    Fails if dwelling in a hazard zone inflates the incidents_created counter.
+    """
+    monitor = ZoneMonitor(source_name="test_runner", load_defaults=False)
+    zone = RestrictedZone(
+        zone_id="saw_cell",
+        name="Rotary Saw Cell",
+        polygon=[[0.0, 0.0], [100.0, 0.0], [100.0, 100.0], [0.0, 100.0]],
+        cooldown_seconds=1.5
+    )
+    monitor.add_zone(zone)
+
+    det = Detection(track_id=5, confidence=0.95, bounding_box=[10.0, 10.0, 40.0, 70.0])
+
+    # Initial intrusion (creation)
+    inc0 = monitor.process_detections([det], frame_timestamp=10.0)
+    assert len(inc0) == 1
+    assert inc0[0].action == "created"
+
+    # 3 subsequent dwell updates (> 1.5s cooldown between each)
+    inc1 = monitor.process_detections([det], frame_timestamp=12.0)
+    assert len(inc1) == 1
+    assert inc1[0].action == "updated"
+
+    inc2 = monitor.process_detections([det], frame_timestamp=14.0)
+    assert len(inc2) == 1
+    assert inc2[0].action == "updated"
+
+    inc3 = monitor.process_detections([det], frame_timestamp=16.0)
+    assert len(inc3) == 1
+    assert inc3[0].action == "updated"
+
+    stats = monitor.get_incident_counts()
+    # CRITICAL INVARIANT: 1 unique incident created, 3 updates, 1 episode recorded in history
+    assert stats["incidents_created"] == 1
+    assert stats["incident_updates"] == 3
+    assert stats["total_incidents"] == 1
+    assert len(monitor.incident_history) == 1
+
+
+@pytest.mark.asyncio
+async def test_regression_sse_events_delivery_count_and_no_loss():
+    """
+    Regression Test 4: SSE events are neither lost nor duplicated.
+    Fails if subscriber queue receives fewer or more events than total creations + updates.
+    """
+    import asyncio
+    from backend.pipeline_manager import PipelineManager
+    import os
+
+    workspace_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    mgr = PipelineManager(workspace_dir=workspace_dir)
+    mgr.mode = "live"
+    mgr.zone_monitor.clear_zones()
+    mgr.zone_monitor.clear_incidents_and_tracks()
+
+    zone = RestrictedZone(
+        zone_id="test_sse_zone",
+        name="SSE Validation Zone",
+        polygon=[[0.0, 0.0], [200.0, 0.0], [200.0, 200.0], [0.0, 200.0]],
+        cooldown_seconds=2.0
+    )
+    mgr.zone_monitor.add_zone(zone)
+
+    # Register an SSE subscriber queue
+    q = await mgr.register_subscriber()
+
+    det = Detection(track_id=88, confidence=0.96, bounding_box=[20.0, 20.0, 60.0, 100.0])
+
+    # Trigger 1 creation (t=10.0) and 2 updates (t=13.0, t=16.0)
+    for t in [10.0, 13.0, 16.0]:
+        incidents = mgr.zone_monitor.process_detections([det], frame_timestamp=t)
+        for inc in incidents:
+            await mgr.broadcast_incident(inc)
+
+    # Collect events from subscriber queue
+    received = []
+    while not q.empty():
+        item = q.get_nowait()
+        received.append(json.loads(item))
+
+    mgr.unregister_subscriber(q)
+
+    # Expected: exactly 3 events received (1 creation + 2 updates)
+    assert len(received) == 3
+    assert received[0]["action"] == "created"
+    assert received[0]["update_seq"] == 0
+    assert received[1]["action"] == "updated"
+    assert received[1]["update_seq"] == 1
+    assert received[2]["action"] == "updated"
+    assert received[2]["update_seq"] == 2
+
+    # All share the exact same incident_id
+    assert received[0]["incident_id"] == received[1]["incident_id"] == received[2]["incident_id"]
+
+
+def test_regression_event_order_and_update_sequence_strictly_monotonic():
+    """
+    Regression Test 5: Event order and update sequence is strictly monotonic.
+    Fails if update sequence decrements or skips, or if dwell time goes backwards.
+    """
+    monitor = ZoneMonitor(source_name="test_runner", load_defaults=False)
+    zone = RestrictedZone(
+        zone_id="conveyor_zone",
+        name="Conveyor Area",
+        polygon=[[0.0, 0.0], [100.0, 0.0], [100.0, 100.0], [0.0, 100.0]],
+        cooldown_seconds=1.0
+    )
+    monitor.add_zone(zone)
+
+    det = Detection(track_id=42, confidence=0.90, bounding_box=[10.0, 10.0, 30.0, 60.0])
+
+    timestamps = [100.0, 101.5, 103.0, 105.0]
+    collected_incidents = []
+
+    for t in timestamps:
+        res = monitor.process_detections([det], frame_timestamp=t)
+        collected_incidents.extend(res)
+
+    assert len(collected_incidents) == 4
+
+    last_seq = -1
+    last_dwell = -1.0
+    initial_id = collected_incidents[0].incident_id
+
+    for idx, inc in enumerate(collected_incidents):
+        assert inc.incident_id == initial_id
+        assert inc.update_seq == idx
+        assert inc.update_seq > last_seq
+        assert inc.dwell_time_seconds >= last_dwell
+        if idx == 0:
+            assert inc.action == "created"
+            assert inc.is_update is False
+        else:
+            assert inc.action == "updated"
+            assert inc.is_update is True
+        last_seq = inc.update_seq
+        last_dwell = inc.dwell_time_seconds
+
+
+def test_regression_run_isolation_prevents_stale_data_leakage():
+    """
+    Regression Test 6: Run isolation reset prevents stale data from another run leaking into acceptance metrics.
+    Fails if resetting state leaves behind remnants of prior runs.
+    """
+    monitor = ZoneMonitor(source_name="test_runner", load_defaults=False)
+    zone = RestrictedZone(
+        zone_id="cell_alpha",
+        name="Cell Alpha",
+        polygon=[[0.0, 0.0], [100.0, 0.0], [100.0, 100.0], [0.0, 100.0]],
+        cooldown_seconds=1.0
+    )
+    monitor.add_zone(zone)
+
+    # 1. Run A executes (generating 2 incidents from 2 workers)
+    det_a1 = Detection(track_id=1, confidence=0.9, bounding_box=[10.0, 10.0, 30.0, 50.0])
+    det_a2 = Detection(track_id=2, confidence=0.9, bounding_box=[40.0, 40.0, 60.0, 70.0])
+    monitor.process_detections([det_a1, det_a2], frame_timestamp=10.0)
+    stats_a = monitor.get_incident_counts()
+    assert stats_a["incidents_created"] == 2
+    assert len(monitor.incident_history) == 2
+    run_a_ids = set(inc.incident_id for inc in monitor.incident_history)
+
+    # 2. ISOLATION RESET
+    monitor.clear_incidents_and_tracks()
+
+    # Verify complete zeroing
+    stats_post_reset = monitor.get_incident_counts()
+    assert stats_post_reset["incidents_created"] == 0
+    assert stats_post_reset["incident_updates"] == 0
+    assert stats_post_reset["total_incidents"] == 0
+    assert stats_post_reset["active_intrusions"] == 0
+    assert len(monitor.incident_history) == 0
+
+    # 3. Run B executes (worker 3 enters at t=20.0 and dwells until t=22.0)
+    det_b = Detection(track_id=3, confidence=0.95, bounding_box=[15.0, 15.0, 35.0, 55.0])
+    monitor.process_detections([det_b], frame_timestamp=20.0)  # created
+    monitor.process_detections([det_b], frame_timestamp=22.0)  # updated
+
+    stats_b = monitor.get_incident_counts()
+    # Invariant: Run B stats MUST NOT include Run A (creation must be 1, NOT 2+1=3)
+    assert stats_b["incidents_created"] == 1
+    assert stats_b["incident_updates"] == 1
+    assert stats_b["total_incidents"] == 1
+    assert len(monitor.incident_history) == 1
+
+    # Verify none of Run A's incident IDs appear in Run B
+    run_b_ids = set(inc.incident_id for inc in monitor.incident_history)
+    assert len(run_a_ids.intersection(run_b_ids)) == 0
+

@@ -1,6 +1,6 @@
 {
-  "timestamp_utc": "2026-10-18T08:12:40.599284+00:00",
-  "backend_url": "http://localhost:8000",
+  "timestamp_utc": "2026-10-18T08:44:10.888330+00:00",
+  "backend_url": "http://127.0.0.1:8000",
   "environment": {
     "backend_app": "SentinelVision Industrial Safety AI Pipeline",
     "backend_version": "0.5.1",
@@ -28,59 +28,76 @@
   },
   "pipeline_execution": {
     "returncode": 0,
-    "wall_clock_seconds": 32.482,
+    "wall_clock_seconds": 37.105,
     "frames_processed": 300,
-    "effective_fps": 9.24,
+    "effective_fps": 8.09,
     "ingestion_delivered": 300,
     "ingestion_failed": 0
   },
   "telemetry_and_events": {
+    "run_id": "gpu_acc_run_1792313063",
+    "unique_incident_ids_count": 5,
+    "incident_creations_count": 5,
+    "incident_updates_count": 4,
     "sse_events_captured": 9,
+    "dashboard_visible_incidents_count": 5,
     "new_incidents_count": 5,
-    "incidents_created": 6,
+    "incidents_created": 5,
     "incident_updates": 4,
-    "total_incidents_recorded": 6,
+    "total_incidents_recorded": 5,
+    "metric_definitions": {
+      "unique_incident_ids_count": "Number of unique incident episode IDs generated during this isolated run",
+      "incident_creations_count": "Number of initial safety zone penetration events (action=created, update_seq=0)",
+      "incident_updates_count": "Number of post-cooldown dwell notification events (action=updated, update_seq>0)",
+      "sse_events_captured": "Total real-time SSE stream events delivered to test client (creations + updates)",
+      "dashboard_visible_incidents_count": "Number of unique incident cards rendered on the frontend dashboard table"
+    },
+    "reconciliation": {
+      "creations_plus_updates_equal_sse": true,
+      "unique_ids_equal_creations": true,
+      "unique_ids_equal_dashboard_visible": true
+    },
     "schema_conformant": true,
     "representative_incident": {
-      "incident_id": "inc_restricted_zone_1_t1_1792311192538",
+      "incident_id": "inc_restricted_zone_1_t1_1792313082487",
       "action": "updated",
       "update_seq": 4,
       "is_update": true,
       "event_type": "restricted_zone_intrusion",
-      "timestamp": "2026-10-18T08:13:24.625293+00:00",
+      "timestamp": "2026-10-18T08:44:54.594212+00:00",
       "zone_id": "restricted_zone_1",
       "zone_name": "Robotic Arm Perimeter",
       "track_id": 1,
-      "confidence": 0.868,
+      "confidence": 0.86,
       "bounding_box": [
-        830.0,
-        306.3,
-        912.4,
-        561.1
+        626.8,
+        294.1,
+        707.7,
+        544.3
       ],
       "detection_point": [
-        874.3,
-        532.2
+        668.9,
+        518.3
       ],
       "contact_source": "pose_ankles",
       "source": "PipeGen DeepStream GPU Pipeline (Live)",
       "risk_level": "CRITICAL",
-      "dwell_time_seconds": 12.09,
+      "dwell_time_seconds": 12.11,
       "pipegen_pipeline_id": "pipegen_person_det_v1",
       "raw_pipegen_meta": {
         "class_id": 0,
         "obj_label": "person",
-        "confidence": 0.868,
+        "confidence": 0.86,
         "object_id": 1,
         "rect_params": {
-          "left": 830.0,
-          "top": 306.3,
-          "width": 82.4,
-          "height": 254.8
+          "left": 626.8,
+          "top": 294.1,
+          "width": 80.9,
+          "height": 250.2
         },
         "detection_point": [
-          874.3,
-          532.2
+          668.9,
+          518.3
         ],
         "contact_source": "pose_ankles"
       }
@@ -88,7 +105,7 @@
   },
   "output_video": {
     "valid": true,
-    "size_bytes": 3969844,
+    "size_bytes": 3691112,
     "frame_count": 300,
     "width": 1280,
     "height": 720,
@@ -96,5 +113,6 @@
     "first_frame_read": true,
     "last_frame_read": true
   },
-  "overall_status": "PASS"
+  "overall_status": "PASS",
+  "run_id": "gpu_acc_run_1792313063"
 }

@@ -49,26 +49,27 @@ Derived Summary: [`logs/gpu_acceptance_summary.json`](logs/gpu_acceptance_summar
   - `yolov8n.fp32.plan`: 22,299,924 bytes (SHA-256: `6db83b9c05c01b3f007e90cb0789665fc144bf24ad9b7e8a5016c061a7c8036a`)
   - `yolo11n-pose.fp32.plan`: 18,899,516 bytes (SHA-256: `d066c37552488a952f18b502ae856ab3726b61ad3c5c75c7548a42775ba907a7`)
 - **Execution Performance:**
-  - 300 / 300 frames processed in 32.48s wall-clock (9.24 effective container FPS)
+  - 300 / 300 frames processed in 37.11s wall-clock (8.09 effective container FPS)
   - 300 / 300 HTTP ingestion deliveries to `/api/pipegen/ingest` (0 failed)
   - 9 SSE live events received on `/api/stream/events`
-  - 6 distinct safety incidents created + 4 periodic dwell updates triggered during worker intrusion into Restricted Zone 1 (Automated Cell 04)
-  - Total incident events emitted and received via SSE: 9 (0 dropped)
-  - Representative Incident: `incident_id: "inc_restricted_zone_1_t1_1792311192538"`, `action: "updated"`, `update_seq: 4`, `zone_id: "restricted_zone_1"`, `track_id: 1`, `contact_source: "pose_ankles"`, `risk_level: "CRITICAL"`, `dwell_time_seconds: 12.09`
-- **Output Video:** `assets/annotated_pipeline_run.mp4` (3,969,844 bytes, 300 frames, 1280x720 @ 30.0 FPS, playable)
+  - 5 distinct safety incidents created + 4 periodic dwell updates triggered during worker intrusion into Restricted Zone 1 (Automated Cell 04)
+  - Total incident events emitted and received via SSE: exactly 9 (5 creations + 4 updates = 9, 0 dropped)
+  - 5 dashboard-visible unique incidents (deduplicated by stable incident_id)
+  - Representative Incident: `incident_id: "inc_restricted_zone_1_t1_1792313082487"`, `action: "updated"`, `update_seq: 4`, `zone_id: "restricted_zone_1"`, `track_id: 1`, `contact_source: "pose_ankles"`, `risk_level: "CRITICAL"`, `dwell_time_seconds: 12.11`
+- **Output Video:** `assets/annotated_pipeline_run.mp4` (3,691,112 bytes, 300 frames, 1280x720 @ 30.0 FPS, playable)
 - **Semantic Reconciliation Note:**
-  Resolves the previously observed count discrepancy (7 incidents vs 6 SSE messages):
-  1. *Subscription Startup Race:* `sse_listener_worker` previously started in a background thread without a ready handshake; the container was launched immediately, causing the first broadcast event to occur before the SSE HTTP connection was established and registered in `pipeline_mgr.subscribers`.
+  Resolves the previously observed count discrepancy (inconsistent creation vs update vs SSE counts):
+  1. *Subscription Startup Race:* `sse_listener_worker` previously started in a background thread without a ready handshake; the container was launched immediately, causing early broadcast events to be lost.
   2. *Buffer Delay:* `resp.read(512)` blocked waiting for 512 bytes rather than immediate line-delimited SSE delivery (`resp.readline()`).
-  3. *Historical State Leakage:* Old demo incidents from startup were retained because `reset_telemetry()` did not clear `zone_monitor.incident_history`.
-  4. *Resolution:* Added `event: connected` handshake synchronization, line-by-line reading, `POST /api/pipeline/reset-incidents`, and separated initial episode creation (`action="created"`, `update_seq=0`) from periodic dwell notifications (`action="updated"`, `update_seq=N`) with stable `incident_id`.
+  3. *Historical State Leakage:* Old demo incidents from startup were retained because `reset_telemetry()` did not clear `zone_monitor.incident_history` after switching to live mode.
+  4. *Resolution:* Switched mode to `live` *first* (halting background demo simulation), followed by `POST /api/pipeline/reset-incidents` to guarantee a clean 0-incident baseline. Separated initial episode creation (`action="created"`, `update_seq=0`, count=5) from periodic dwell notifications (`action="updated"`, `update_seq=1..4`, count=4) with stable `incident_id`. Result: 5 creations + 4 updates = exactly 9 SSE events delivered to client, with 5 unique incidents rendered on the dashboard.
 - **Overall Status:** **PASS**
 
 ---
 
 ## 3. Reproduction Commands
 
-### 1. Execute Fast Automated Test Suite (66 Tests, CPU Only)
+### 1. Execute Fast Automated Test Suite (72 Tests, CPU Only)
 ```bash
 python -m pytest tests/ -v
 ```
