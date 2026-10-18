@@ -1,4 +1,8 @@
 export interface SafetyIncident {
+  incident_id?: string;
+  action?: 'created' | 'updated' | 'resolved';
+  update_seq?: number;
+  is_update?: boolean;
   event_type: string;
   timestamp: string;
   zone_id: string;
@@ -7,6 +11,7 @@ export interface SafetyIncident {
   confidence: number;
   bounding_box: number[];
   detection_point?: number[];
+  contact_source?: string;
   source: string;
   risk_level: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   dwell_time_seconds: number;

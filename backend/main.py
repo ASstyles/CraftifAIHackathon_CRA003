@@ -186,10 +186,20 @@ async def ingest_pipegen_metadata(payload: Dict[str, Any]):
 
 
 @app.post("/api/pipeline/reset-telemetry")
-def reset_pipeline_telemetry():
+def reset_pipeline_telemetry(reset_incidents: bool = False):
     """Reset live measured telemetry back to uninitialized state for test isolation."""
     pipeline_mgr.reset_telemetry()
+    if reset_incidents:
+        pipeline_mgr.zone_monitor.clear_incidents_and_tracks()
     return {"status": "success", "message": "Live telemetry reset to uninitialized state"}
+
+
+@app.post("/api/pipeline/reset-incidents")
+def reset_pipeline_incidents():
+    """Clear all incident history, active track states, and statistics for test isolation."""
+    pipeline_mgr.zone_monitor.clear_incidents_and_tracks()
+    pipeline_mgr.latest_incident = None
+    return {"status": "success", "message": "Incident history and active tracks reset"}
 
 
 @app.post("/api/pipeline/start")
@@ -261,6 +271,8 @@ async def sse_incident_stream():
     async def event_generator():
         queue = await pipeline_mgr.register_subscriber()
         try:
+            # Send immediate connected handshake to confirm subscriber registration
+            yield f"event: connected\ndata: {json.dumps({'status': 'connected', 'timestamp': time.time()})}\n\n"
             while True:
                 # Send heartbeat or new event
                 try:
@@ -271,7 +283,15 @@ async def sse_incident_stream():
         finally:
             pipeline_mgr.unregister_subscriber(queue)
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
 
 
 if __name__ == "__main__":

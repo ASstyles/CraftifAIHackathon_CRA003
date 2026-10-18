@@ -7,7 +7,7 @@ interface IncidentLogProps {
 }
 
 export const IncidentLog: React.FC<IncidentLogProps> = ({ incidents }) => {
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const handleExportJSON = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(incidents, null, 2));
@@ -86,15 +86,16 @@ export const IncidentLog: React.FC<IncidentLogProps> = ({ incidents }) => {
           </div>
         ) : (
           incidents.map((inc, index) => {
-            const isExpanded = expandedId === index;
+            const itemKey = inc.incident_id || `${inc.zone_id}_${inc.track_id}_${index}`;
+            const isExpanded = expandedId === itemKey;
             const timeFormatted = new Date(inc.timestamp).toLocaleTimeString();
 
             return (
               <div
-                key={index}
+                key={itemKey}
                 style={{
                   background: 'rgba(15, 23, 42, 0.65)',
-                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  border: inc.is_update ? '1px solid rgba(245, 158, 11, 0.35)' : '1px solid rgba(239, 68, 68, 0.25)',
                   borderRadius: '8px',
                   padding: '12px',
                   transition: 'all 0.2s ease'
@@ -107,14 +108,26 @@ export const IncidentLog: React.FC<IncidentLogProps> = ({ incidents }) => {
                       width: '8px',
                       height: '8px',
                       borderRadius: '50%',
-                      backgroundColor: '#ef4444'
+                      backgroundColor: inc.is_update ? '#f59e0b' : '#ef4444'
                     }} />
-                    <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#f87171' }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.85rem', color: inc.is_update ? '#fbbf24' : '#f87171' }}>
                       {inc.zone_name || inc.zone_id}
                     </span>
                     <span className="badge badge-danger" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
                       {inc.risk_level}
                     </span>
+                    {inc.is_update && (
+                      <span style={{
+                        fontSize: '0.65rem',
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        background: 'rgba(245, 158, 11, 0.15)',
+                        color: '#fbbf24',
+                        border: '1px solid rgba(245, 158, 11, 0.3)'
+                      }}>
+                        Update #{inc.update_seq || 1}
+                      </span>
+                    )}
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -122,7 +135,7 @@ export const IncidentLog: React.FC<IncidentLogProps> = ({ incidents }) => {
                       {timeFormatted}
                     </span>
                     <button
-                      onClick={() => setExpandedId(isExpanded ? null : index)}
+                      onClick={() => setExpandedId(isExpanded ? null : itemKey)}
                       style={{
                         background: 'transparent',
                         border: 'none',

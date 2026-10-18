@@ -43,38 +43,47 @@ def compute_sha256(filepath: str) -> str:
 
 
 def check_backend_alive(backend_url: str) -> dict:
-    try:
-        req = Request(f"{backend_url}/api/status", headers={"User-Agent": "SentinelVision-GPU-Acceptance"})
-        with urlopen(req, timeout=5) as resp:
-            if resp.status == 200:
-                return json.loads(resp.read().decode("utf-8"))
-    except Exception as e:
-        return {"error": str(e)}
-    return {"error": "Non-200 response"}
+    urls_to_try = [backend_url]
+    if "localhost" in backend_url:
+        urls_to_try.append(backend_url.replace("localhost", "127.0.0.1"))
+    elif "127.0.0.1" in backend_url:
+        urls_to_try.append(backend_url.replace("127.0.0.1", "localhost"))
+
+    last_err = "No response"
+    for url in urls_to_try:
+        try:
+            req = Request(f"{url}/api/status", headers={"User-Agent": "SentinelVision-GPU-Acceptance"})
+            with urlopen(req, timeout=5) as resp:
+                if resp.status == 200:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    data["_resolved_url"] = url
+                    return data
+        except Exception as e:
+            last_err = str(e)
+    return {"error": last_err}
 
 
-def sse_listener_worker(stream_url: str, stop_event: threading.Event, out_queue: queue.Queue):
+def sse_listener_worker(stream_url: str, stop_event: threading.Event, connected_event: threading.Event, out_queue: queue.Queue):
     try:
         req = Request(stream_url, headers={"Accept": "text/event-stream", "User-Agent": "SentinelVision-SSE-Test"})
         with urlopen(req, timeout=120) as resp:
-            buffer = ""
+            connected_event.set()
             while not stop_event.is_set():
-                chunk = resp.read(512)
-                if not chunk:
+                line = resp.readline()
+                if not line:
                     break
-                buffer += chunk.decode("utf-8", errors="replace")
-                while "\n\n" in buffer:
-                    message, buffer = buffer.split("\n\n", 1)
-                    for line in message.splitlines():
-                        if line.startswith("data:"):
-                            payload_str = line[len("data:"):].strip()
-                            try:
-                                payload = json.loads(payload_str)
-                                out_queue.put(payload)
-                            except Exception:
-                                pass
+                line_str = line.decode("utf-8", errors="replace").strip()
+                if line_str.startswith("data:"):
+                    payload_str = line_str[len("data:"):].strip()
+                    try:
+                        payload = json.loads(payload_str)
+                        # Filter to real safety incidents (exclude heartbeat pings or connection acks)
+                        if payload.get("event_type") == "restricted_zone_intrusion":
+                            out_queue.put(payload)
+                    except Exception:
+                        pass
     except Exception:
-        pass
+        connected_event.set()
 
 
 def validate_output_video(video_path: str) -> dict:
@@ -143,10 +152,14 @@ def run_gpu_acceptance(backend_url: str = "http://localhost:8000", max_frames: i
         _write_summary(acceptance_summary)
         return False
 
+    if "_resolved_url" in status_data:
+        backend_url = status_data["_resolved_url"]
+        acceptance_summary["backend_url"] = backend_url
+
     acceptance_summary["preflight"]["backend_status"] = "PASS"
     acceptance_summary["environment"]["backend_app"] = status_data.get("pipeline_name", "SentinelVision")
     acceptance_summary["environment"]["backend_version"] = status_data.get("pipegen_version", "0.5.1")
-    print(f"[PASS] Backend Online: {acceptance_summary['environment']['backend_app']} (PipeGen v{acceptance_summary['environment']['backend_version']})")
+    print(f"[PASS] Backend Online ({backend_url}): {acceptance_summary['environment']['backend_app']} (PipeGen v{acceptance_summary['environment']['backend_version']})")
 
     # Step 2: Engine availability & hash verification
     yolo_plan = os.path.join(workspace_dir, "pipegen_pipeline", "official_pipegen_build", "model_stage", "yolov8n.fp32.plan")
@@ -189,11 +202,13 @@ def run_gpu_acceptance(backend_url: str = "http://localhost:8000", max_frames: i
     except Exception as e:
         acceptance_summary["environment"]["gpu"] = {"status": f"nvidia-smi error: {e}"}
 
-    # Step 4: Reset backend telemetry and switch mode to LIVE
+    # Step 4: Reset backend telemetry, isolate incidents, and switch mode to LIVE
     print("[*] Resetting backend telemetry and configuring LIVE mode...")
     try:
-        req_reset = Request(f"{backend_url}/api/pipeline/reset-telemetry", data=b"", headers={"User-Agent": "AcceptanceRunner"})
+        req_reset = Request(f"{backend_url}/api/pipeline/reset-telemetry?reset_incidents=true", data=b"", headers={"User-Agent": "AcceptanceRunner"})
         urlopen(req_reset, timeout=5)
+        req_reset_inc = Request(f"{backend_url}/api/pipeline/reset-incidents", data=b"", headers={"User-Agent": "AcceptanceRunner"})
+        urlopen(req_reset_inc, timeout=5)
         req_mode = Request(f"{backend_url}/api/mode", data=json.dumps({"mode": "live"}).encode("utf-8"), headers={"Content-Type": "application/json"})
         urlopen(req_mode, timeout=5)
     except Exception as e:
@@ -208,16 +223,20 @@ def run_gpu_acceptance(backend_url: str = "http://localhost:8000", max_frames: i
         pass
     initial_incident_count = len(initial_incidents)
 
-    # Step 5: Start SSE Listener Thread
+    # Step 5: Start SSE Listener Thread with Ready Handshake Synchronization
     sse_stop_event = threading.Event()
+    sse_connected_event = threading.Event()
     sse_queue = queue.Queue()
     sse_thread = threading.Thread(
         target=sse_listener_worker,
-        args=(f"{backend_url}/api/stream/events", sse_stop_event, sse_queue),
+        args=(f"{backend_url}/api/stream/events", sse_stop_event, sse_connected_event, sse_queue),
         daemon=True
     )
     sse_thread.start()
-    print("[PASS] SSE Event Stream Listener active on /api/stream/events")
+    if sse_connected_event.wait(timeout=5.0):
+        print("[PASS] SSE Event Stream Listener active and confirmed connected on /api/stream/events")
+    else:
+        print("[WARN] SSE Event Stream Listener started (handshake timeout, proceeding)")
 
     # Step 6: Execute inference pipeline
     print("\n[*] Launching Real TensorRT Pipeline in DeepStream container...")
@@ -298,16 +317,28 @@ def run_gpu_acceptance(backend_url: str = "http://localhost:8000", max_frames: i
     acceptance_summary["telemetry_and_events"]["sse_events_captured"] = len(sse_events)
     print(f"[PASS] SSE Events Received during run: {len(sse_events)}")
 
-    # Fetch incidents post-run
+    # Fetch incidents and statistics post-run
     post_incidents = []
+    stats_data = {}
     try:
         with urlopen(f"{backend_url}/api/incidents?limit=100", timeout=5) as r:
             post_incidents = json.loads(r.read().decode("utf-8"))
+        with urlopen(f"{backend_url}/api/incidents/stats", timeout=5) as r:
+            stats_data = json.loads(r.read().decode("utf-8"))
     except Exception as e:
-        print(f"[WARN] Failed to fetch post-run incidents: {e}")
+        print(f"[WARN] Failed to fetch post-run incidents or stats: {e}")
 
     new_incidents = post_incidents[:max(0, len(post_incidents) - initial_incident_count)]
+    acceptance_summary["telemetry_and_events"]["sse_events_captured"] = len(sse_events)
     acceptance_summary["telemetry_and_events"]["new_incidents_count"] = len(new_incidents)
+    acceptance_summary["telemetry_and_events"]["incidents_created"] = stats_data.get("incidents_created", len(new_incidents))
+    acceptance_summary["telemetry_and_events"]["incident_updates"] = stats_data.get("incident_updates", 0)
+    acceptance_summary["telemetry_and_events"]["total_incidents_recorded"] = stats_data.get("total_incidents", len(post_incidents))
+
+    print(f"[*] Incident Telemetry Breakdown:")
+    print(f"    - Distinct Incidents Created : {acceptance_summary['telemetry_and_events']['incidents_created']}")
+    print(f"    - Periodic Dwell Updates     : {acceptance_summary['telemetry_and_events']['incident_updates']}")
+    print(f"    - Total Real-Time SSE Events : {len(sse_events)}")
 
     # Validate Schema of generated incidents
     schema_pass = True

@@ -41,6 +41,8 @@ class TrackState:
     def __init__(self, track_id: int):
         self.track_id = track_id
         self.active_zones: Dict[str, float] = {}  # zone_id -> entry_time (timestamp)
+        self.active_incident_ids: Dict[str, str] = {}  # zone_id -> stable incident_id
+        self.incident_update_seq: Dict[str, int] = {}  # zone_id -> sequence count
         self.last_incident_time: Dict[str, float] = {}  # zone_id -> last_incident_time (timestamp)
         self.last_seen: float = time.time()
         self.last_bbox: Optional[List[float]] = None
@@ -59,6 +61,8 @@ class ZoneMonitor:
         self.tracks: Dict[int, TrackState] = {}
         self.incident_history: List[SafetyIncident] = []
         self.max_history: int = 500
+        self.total_incidents_created: int = 0
+        self.total_incident_updates: int = 0
         self.track_timeout_seconds: float = 15.0
         self.next_untracked_id: int = 1000
 
@@ -69,6 +73,13 @@ class ZoneMonitor:
     def clear_zones(self):
         """Clear all active and inactive zones."""
         self.zones.clear()
+
+    def clear_incidents_and_tracks(self):
+        """Cleanly reset all incident records, statistics, and track states."""
+        self.incident_history.clear()
+        self.tracks.clear()
+        self.total_incidents_created = 0
+        self.total_incident_updates = 0
 
     def _initialize_default_zones(self):
         """Create sample realistic industrial restricted zones (pixel coords 0-1280, 0-720)."""
@@ -164,25 +175,43 @@ class ZoneMonitor:
 
                 if is_inside:
                     if zone_id not in track.active_zones:
-                        # NEW ENTRY INTO ZONE
+                        # NEW ENTRY INTO ZONE (Incident Creation)
                         track.active_zones[zone_id] = current_time
+                        episode_id = f"inc_{zone_id}_t{track_id}_{int(current_time * 1000)}"
+                        track.active_incident_ids[zone_id] = episode_id
+                        track.incident_update_seq[zone_id] = 0
                         dwell_time = 0.0
+                        is_update = False
+                        action = "created"
+                        update_seq = 0
                         trigger_incident = True
                     else:
-                        # ALREADY INSIDE ZONE
+                        # ALREADY INSIDE ZONE (Incident Update check)
                         dwell_time = current_time - track.active_zones[zone_id]
                         last_alert = track.last_incident_time.get(zone_id, 0.0)
-                        
+
                         # DUPLICATE SUPPRESSION LOGIC:
                         # Only re-trigger if cooldown period has elapsed
                         if current_time - last_alert >= zone.cooldown_seconds:
                             trigger_incident = True
+                            is_update = True
+                            action = "updated"
+                            episode_id = track.active_incident_ids.get(
+                                zone_id,
+                                f"inc_{zone_id}_t{track_id}_{int(track.active_zones[zone_id] * 1000)}"
+                            )
+                            track.incident_update_seq[zone_id] = track.incident_update_seq.get(zone_id, 0) + 1
+                            update_seq = track.incident_update_seq[zone_id]
                         else:
                             trigger_incident = False
 
                     if trigger_incident:
                         track.last_incident_time[zone_id] = current_time
                         incident = SafetyIncident(
+                            incident_id=episode_id,
+                            action=action,
+                            update_seq=update_seq,
+                            is_update=is_update,
                             event_type="restricted_zone_intrusion",
                             timestamp=datetime.fromtimestamp(current_time, timezone.utc).isoformat(),
                             zone_id=zone.zone_id,
@@ -198,7 +227,21 @@ class ZoneMonitor:
                             raw_pipegen_meta=det.raw_metadata
                         )
                         new_incidents.append(incident)
-                        self.incident_history.insert(0, incident)
+                        if is_update:
+                            self.total_incident_updates += 1
+                            # Update existing record in incident_history if present
+                            updated_in_history = False
+                            for idx, existing in enumerate(self.incident_history):
+                                if existing.incident_id == episode_id:
+                                    self.incident_history[idx] = incident
+                                    updated_in_history = True
+                                    break
+                            if not updated_in_history:
+                                self.incident_history.insert(0, incident)
+                        else:
+                            self.total_incidents_created += 1
+                            self.incident_history.insert(0, incident)
+
                         if len(self.incident_history) > self.max_history:
                             self.incident_history.pop()
 
@@ -206,6 +249,9 @@ class ZoneMonitor:
                     # Person is outside this zone - if they were previously inside, mark exited
                     if zone_id in track.active_zones:
                         del track.active_zones[zone_id]
+                        track.active_incident_ids.pop(zone_id, None)
+                        track.incident_update_seq.pop(zone_id, None)
+                        track.last_incident_time.pop(zone_id, None)
 
         return new_incidents
 
@@ -247,7 +293,7 @@ class ZoneMonitor:
         return self.incident_history[:limit]
 
     def get_incident_counts(self) -> Dict[str, Any]:
-        """Return aggregate statistics for safety incidents."""
+        """Return aggregate statistics for safety incidents with distinct created/update counts."""
         total = len(self.incident_history)
         by_zone: Dict[str, int] = {}
         by_risk: Dict[str, int] = {}
@@ -262,6 +308,8 @@ class ZoneMonitor:
 
         return {
             "total_incidents": total,
+            "incidents_created": self.total_incidents_created,
+            "incident_updates": self.total_incident_updates,
             "active_intrusions": active_intrusions,
             "by_zone": by_zone,
             "by_risk": by_risk

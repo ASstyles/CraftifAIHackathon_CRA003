@@ -1,6 +1,6 @@
 {
-  "timestamp_utc": "2026-10-16T21:40:14.087687+00:00",
-  "backend_url": "http://localhost:8000",
+  "timestamp_utc": "2026-10-18T07:20:16.826209+00:00",
+  "backend_url": "http://127.0.0.1:8000",
   "environment": {
     "backend_app": "SentinelVision Industrial Safety AI Pipeline",
     "backend_version": "0.5.1",
@@ -28,52 +28,59 @@
   },
   "pipeline_execution": {
     "returncode": 0,
-    "wall_clock_seconds": 22.915,
+    "wall_clock_seconds": 30.839,
     "frames_processed": 300,
-    "effective_fps": 13.09,
+    "effective_fps": 9.73,
     "ingestion_delivered": 300,
     "ingestion_failed": 0
   },
   "telemetry_and_events": {
-    "sse_events_captured": 6,
-    "new_incidents_count": 7,
+    "sse_events_captured": 9,
+    "new_incidents_count": 5,
+    "incidents_created": 5,
+    "incident_updates": 4,
+    "total_incidents_recorded": 5,
     "schema_conformant": true,
     "representative_incident": {
+      "incident_id": "inc_restricted_zone_1_t1_1792308042955",
+      "action": "updated",
+      "update_seq": 4,
+      "is_update": true,
       "event_type": "restricted_zone_intrusion",
-      "timestamp": "2026-10-16T21:40:44.728206+00:00",
+      "timestamp": "2026-10-18T07:20:55.162229+00:00",
       "zone_id": "restricted_zone_1",
       "zone_name": "Robotic Arm Perimeter",
       "track_id": 1,
-      "confidence": 0.867,
+      "confidence": 0.835,
       "bounding_box": [
-        677.2,
-        298.8,
-        758.7,
-        543.9
+        714.7,
+        300.2,
+        796.2,
+        548.9
       ],
       "detection_point": [
-        722.1,
-        522.2
+        758.3,
+        526.5
       ],
       "contact_source": "pose_ankles",
       "source": "PipeGen DeepStream GPU Pipeline (Live)",
       "risk_level": "CRITICAL",
-      "dwell_time_seconds": 6.03,
+      "dwell_time_seconds": 12.21,
       "pipegen_pipeline_id": "pipegen_person_det_v1",
       "raw_pipegen_meta": {
         "class_id": 0,
         "obj_label": "person",
-        "confidence": 0.867,
+        "confidence": 0.835,
         "object_id": 1,
         "rect_params": {
-          "left": 677.2,
-          "top": 298.8,
+          "left": 714.7,
+          "top": 300.2,
           "width": 81.5,
-          "height": 245.1
+          "height": 248.7
         },
         "detection_point": [
-          722.1,
-          522.2
+          758.3,
+          526.5
         ],
         "contact_source": "pose_ankles"
       }
@@ -81,7 +88,7 @@
   },
   "output_video": {
     "valid": true,
-    "size_bytes": 3852232,
+    "size_bytes": 3957994,
     "frame_count": 300,
     "width": 1280,
     "height": 720,

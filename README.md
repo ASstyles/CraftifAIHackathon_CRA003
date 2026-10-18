@@ -332,6 +332,10 @@ Every detected intrusion produces a standardized, machine-readable JSON payload:
 ```json
 {
   "event_type": "restricted_zone_intrusion",
+  "incident_id": "inc_restricted_zone_1_1_1729237123",
+  "action": "created",
+  "update_seq": 0,
+  "is_update": false,
   "timestamp": "2026-10-15T15:14:06.900526+00:00",
   "zone_id": "restricted_zone_1",
   "zone_name": "Robotic Arm Perimeter",
@@ -339,6 +343,7 @@ Every detected intrusion produces a standardized, machine-readable JSON payload:
   "confidence": 0.96,
   "bounding_box": [590.4, 381.7, 658.4, 536.7],
   "detection_point": [624.4, 536.7],
+  "contact_source": "pose_ankles",
   "source": "workplace_safety_demo.mp4",
   "risk_level": "CRITICAL",
   "dwell_time_seconds": 12.26,
@@ -400,7 +405,7 @@ Measured using high-resolution monotonic timer (`time.perf_counter`) over 300 fr
 ## 13. Exported PipeGen Project Bundle
 
 The complete PipeGen-generated project—including natural language requirements, 321-node Pipeline IR, compilation tactic configs, runtime profiles, ONNX models, compilation scripts, and dual parallel detector/pose source code—is bundled and downloadable directly from:
-- **Downloadable ZIP Archive:** [`pipegen_pipeline/craftifai_pipegen_export_CRA003.zip`](pipegen_pipeline/craftifai_pipegen_export_CRA003.zip) (**21.17 MB**)
+- **Downloadable ZIP Archive:** [`pipegen_pipeline/craftifai_pipegen_export_CRA003.zip`](pipegen_pipeline/craftifai_pipegen_export_CRA003.zip) (**21.19 MB**)
 - **Directory Structure:** [`pipegen_pipeline/official_pipegen_build/`](pipegen_pipeline/official_pipegen_build/)
 
 ---

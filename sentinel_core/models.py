@@ -3,6 +3,7 @@ SentinelVision - Core Data Models
 CraftifAI Physical AI Hackathon | Track A: PipeGen
 """
 
+import uuid
 from typing import List, Tuple, Dict, Any, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
@@ -81,6 +82,22 @@ class SafetyIncident(BaseModel):
       "source": "sample_video"
     }
     """
+    incident_id: str = Field(
+        default_factory=lambda: f"inc_{uuid.uuid4().hex[:12]}",
+        description="Stable unique ID for the incident episode"
+    )
+    action: str = Field(
+        default="created",
+        description="'created' for initial breach, 'updated' for dwell accumulation, 'resolved' for zone exit"
+    )
+    update_seq: int = Field(
+        default=0,
+        description="0 for initial creation, 1+ for subsequent dwell updates"
+    )
+    is_update: bool = Field(
+        default=False,
+        description="True if this is an update to an ongoing intrusion episode"
+    )
     event_type: str = "restricted_zone_intrusion"
     timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     zone_id: str

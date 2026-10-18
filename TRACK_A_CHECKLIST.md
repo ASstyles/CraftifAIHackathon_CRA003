@@ -30,11 +30,11 @@ The evaluation statuses below strictly adhere to the following definitions:
 | **8** | **Speed Report Contains Reproducible Measurements** | **PASS** | [`pipegen_pipeline/speed_report.md`](pipegen_pipeline/speed_report.md) | `pipegen_pipeline/actual_measured_benchmark.json`<br>[`scripts/benchmark_audit.py`](scripts/benchmark_audit.py) | Full latency breakdown across percentiles (p50, p90, p95, p99), power draw (30.29 W), thermal baseline (56°C), and CPU host comparative baseline (265.26 FPS). | Strictly differentiates pure GPU model latency from application-level web/rendering latency. |
 | **9** | **Video Demonstration Supports Claims** | **PASS** | [`assets/workplace_safety_demo.mp4`](assets/workplace_safety_demo.mp4)<br>[`assets/annotated_pipeline_run.mp4`](assets/annotated_pipeline_run.mp4) | `assets/pipeline_run_frame.jpg`<br>`assets/pipeline_intrusion_frame.jpg` | 300-frame annotated output video validated with `cv2.VideoCapture`: 1280x720 @ 30 FPS, first and last frame decodable, displaying real bounding boxes, pose skeletons, ankle coordinates, and zone overlays. | Monocular camera view without physical hardware relay cutoff. |
 | **10** | **Actionable Structured JSON Output Verified** | **PASS** | [`sentinel_core/models.py`](sentinel_core/models.py)<br>[`sentinel_core/pipegen_adapter.py`](sentinel_core/pipegen_adapter.py) | `tests/test_incident_schema.py`<br>`logs/gpu_acceptance_summary.json` | Validated Pydantic v2 `SafetyIncident` schema: event type, timestamp, zone ID, track ID, bounding box, detection point, contact source (`pose_ankles`), dwell duration, and risk level. | Validated on both synthetic acceptance fixtures and live GPU pipeline execution. |
-| **11** | **Pipeline Output Reaches Safety Engine & Dashboard** | **PASS** | [`backend/main.py`](backend/main.py)<br>[`sentinel_core/zone_monitor.py`](sentinel_core/zone_monitor.py)<br>[`frontend/src/App.tsx`](frontend/src/App.tsx) | [`docs/evidence/live_dashboard_gpu_run.png`](docs/evidence/live_dashboard_gpu_run.png)<br>[`logs/gpu_acceptance_summary.json`](logs/gpu_acceptance_summary.json) | Complete real data path executed: Container TRT inference → HTTP ingestion (`/api/pipegen/ingest`) → `ZoneMonitor` → Incident Event → SSE stream (`/api/stream/events`) → Live React Dashboard. 6 SSE events received, 7 incidents logged, live screenshot captured. | HTTP delivery confirms per-frame metadata ingestion; incident generation occurs when worker contacts restricted zone polygon. |
-| **12** | **Automated Tests & Frontend Build Executed** | **PASS** | [`tests/`](tests/) (59 unit/integration tests)<br>[`frontend/`](frontend/) (Vite + TypeScript) | [`junit-test-results.xml`](junit-test-results.xml)<br>[`.github/workflows/ci.yml`](.github/workflows/ci.yml) | 59/59 pytest tests pass in 24.36s (covering CLI flags, TRT safety, metric provenance, geometry, ankle localization, SpatialTracker persistence, suppression, schema, CORS regex, malformed input, export zip). Frontend builds cleanly with zero errors in 12.72s (`dist/assets/`). | CPU CI runs automated tests on every push/PR; GPU job is guarded for self-hosted execution. |
+| **11** | **Pipeline Output Reaches Safety Engine & Dashboard** | **PASS** | [`backend/main.py`](backend/main.py)<br>[`sentinel_core/zone_monitor.py`](sentinel_core/zone_monitor.py)<br>[`frontend/src/App.tsx`](frontend/src/App.tsx) | [`docs/evidence/live_dashboard_gpu_run.png`](docs/evidence/live_dashboard_gpu_run.png)<br>[`logs/gpu_acceptance_summary.json`](logs/gpu_acceptance_summary.json) | Complete real data path executed: Container TRT inference → HTTP ingestion (`/api/pipegen/ingest`) → `ZoneMonitor` → Incident Event → SSE stream (`/api/stream/events`) → Live React Dashboard. 9 SSE events received, exactly matching 5 distinct incidents created + 4 periodic dwell updates. Incident counts, updates, and SSE events are fully reconciled with stable incident_id and action metadata (created vs updated). Live screenshot captured. | HTTP delivery confirms per-frame metadata ingestion; incident generation occurs when worker contacts restricted zone polygon. |
+| **12** | **Automated Tests & Frontend Build Executed** | **PASS** | [`tests/`](tests/) (64 unit/integration tests)<br>[`frontend/`](frontend/) (Vite + TypeScript) | [`junit-test-results.xml`](junit-test-results.xml)<br>[`.github/workflows/ci.yml`](.github/workflows/ci.yml) | 64/64 pytest tests pass in ~30s (covering CLI flags, TRT safety, metric provenance, geometry, ankle localization, SpatialTracker persistence, suppression, schema, CORS regex, malformed input, export zip, and incident episode semantics/stable IDs). Frontend builds cleanly with zero errors in 1.74s (`dist/assets/`). | CPU CI runs automated tests on every push/PR; GPU job is guarded for self-hosted execution. |
 | **13** | **Architecture & Claims Audit Reconciled** | **PASS** | [`docs/ARCHITECTURE_AND_CLAIMS_AUDIT.md`](docs/ARCHITECTURE_AND_CLAIMS_AUDIT.md)<br>[`README.md`](README.md) | Repository-wide codebase audit | All technical overclaims eliminated: corrected "zero-copy" to explicit CUDA transfers; corrected "DeepStream pipeline" to Python container runner; corrected "guaranteed track IDs" to greedy IoU association; differentiated model vs full pipeline latency; verified HTTP ingest vs incident logic. | Audit document provides full transparency into architecture boundaries. |
 | **14** | **Repository Security & Hygiene Reviewed** | **PASS** | [`.gitignore`](.gitignore)<br>[`scripts/package_export.py`](scripts/package_export.py) | Codebase git search and audit | Zero secrets, tokens, or private keys committed. PII and temporary build scratch files excluded via `.gitignore`. CORS origin restricted to local origins. Standalone export zip integrity verified. | No sensitive credentials in repository. |
-| **15** | **Standalone Export Bundle Integrity** | **PASS** | [`pipegen_pipeline/craftifai_pipegen_export_CRA003.zip`](pipegen_pipeline/craftifai_pipegen_export_CRA003.zip) | [`tests/test_export_bundle.py`](tests/test_export_bundle.py) | Automated archive integrity test: verified valid zip (21.17 MB), 47 files, non-corrupted, containing `PipelineIR.json`, `RequirementState.json`, `ModelStage.log`, `compile.data.json`, `yolov8_pose.py`, and ONNX models. | Large `.plan` engine files excluded from zip per export standards; generated on-target via `compile_engines.sh`. |
+| **15** | **Standalone Export Bundle Integrity** | **PASS** | [`pipegen_pipeline/craftifai_pipegen_export_CRA003.zip`](pipegen_pipeline/craftifai_pipegen_export_CRA003.zip) | [`tests/test_export_bundle.py`](tests/test_export_bundle.py) | Automated archive integrity test: verified valid zip (21.19 MB), 47 files, non-corrupted, containing `PipelineIR.json`, `RequirementState.json`, `ModelStage.log`, `compile.data.json`, `yolov8_pose.py`, and ONNX models. | Large `.plan` engine files excluded from zip per export standards; generated on-target via `compile_engines.sh`. |
 
 ---
 
@@ -49,19 +49,26 @@ Derived Summary: [`logs/gpu_acceptance_summary.json`](logs/gpu_acceptance_summar
   - `yolov8n.fp32.plan`: 22,299,924 bytes (SHA-256: `6db83b9c05c01b3f007e90cb0789665fc144bf24ad9b7e8a5016c061a7c8036a`)
   - `yolo11n-pose.fp32.plan`: 18,899,516 bytes (SHA-256: `d066c37552488a952f18b502ae856ab3726b61ad3c5c75c7548a42775ba907a7`)
 - **Execution Performance:**
-  - 300 / 300 frames processed in 22.92s wall-clock (13.09 effective container FPS)
+  - 300 / 300 frames processed in 30.82s wall-clock (9.73 effective container FPS)
   - 300 / 300 HTTP ingestion deliveries to `/api/pipegen/ingest` (0 failed)
-  - 6 SSE live events received on `/api/stream/events`
-  - 7 safety incidents triggered during worker intrusion into Restricted Zone 1 (Automated Cell 04)
-  - Representative Incident: `zone_id: "restricted_zone_1"`, `track_id: 1`, `contact_source: "pose_ankles"`, `risk_level: "CRITICAL"`, `dwell_time_seconds: 6.03`
-- **Output Video:** `assets/annotated_pipeline_run.mp4` (3,852,232 bytes, 300 frames, 1280x720 @ 30.0 FPS, playable)
+  - 9 SSE live events received on `/api/stream/events`
+  - 5 distinct safety incidents created + 4 periodic dwell updates triggered during worker intrusion into Restricted Zone 1 (Automated Cell 04)
+  - Total incident events emitted and received via SSE: 9 (0 dropped)
+  - Representative Incident: `incident_id: "inc_restricted_zone_1_1_..."`, `action: "created"`, `zone_id: "restricted_zone_1"`, `track_id: 1`, `contact_source: "pose_ankles"`, `risk_level: "CRITICAL"`, `dwell_time_seconds: 5.7`
+- **Output Video:** `assets/annotated_pipeline_run.mp4` (3,957,994 bytes, 300 frames, 1280x720 @ 30.0 FPS, playable)
+- **Semantic Reconciliation Note:**
+  Resolves the previously observed count discrepancy (7 incidents vs 6 SSE messages):
+  1. *Subscription Startup Race:* `sse_listener_worker` previously started in a background thread without a ready handshake; the container was launched immediately, causing the first broadcast event to occur before the SSE HTTP connection was established and registered in `pipeline_mgr.subscribers`.
+  2. *Buffer Delay:* `resp.read(512)` blocked waiting for 512 bytes rather than immediate line-delimited SSE delivery (`resp.readline()`).
+  3. *Historical State Leakage:* Old demo incidents from startup were retained because `reset_telemetry()` did not clear `zone_monitor.incident_history`.
+  4. *Resolution:* Added `event: connected` handshake synchronization, line-by-line reading, `POST /api/pipeline/reset-incidents`, and separated initial episode creation (`action="created"`, `update_seq=0`) from periodic dwell notifications (`action="updated"`, `update_seq=N`) with stable `incident_id`.
 - **Overall Status:** **PASS**
 
 ---
 
 ## 3. Reproduction Commands
 
-### 1. Execute Fast Automated Test Suite (59 Tests, CPU Only)
+### 1. Execute Fast Automated Test Suite (64 Tests, CPU Only)
 ```bash
 python -m pytest tests/ -v
 ```
@@ -85,3 +92,4 @@ python scripts/run_gpu_acceptance.py
 cd frontend
 npm run build
 ```
+

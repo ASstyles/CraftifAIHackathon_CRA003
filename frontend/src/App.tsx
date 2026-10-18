@@ -56,21 +56,43 @@ export const App: React.FC = () => {
   // Server-Sent Events (SSE) for instant incident push
   useEffect(() => {
     let evtSource: EventSource | null = null;
+    let isSubscribed = true;
+
     try {
       evtSource = new EventSource('/api/stream/events');
       evtSource.addEventListener('incident', (event: MessageEvent) => {
+        if (!isSubscribed) return;
         try {
           const newInc: SafetyIncident = JSON.parse(event.data);
-          setIncidents((prev) => [newInc, ...prev.slice(0, 99)]);
+          if (!newInc || !newInc.zone_id) return;
+
+          setIncidents((prev) => {
+            // Deduplicate or update in place by stable incident_id
+            const existingIdx = prev.findIndex(
+              (p) => (newInc.incident_id && p.incident_id === newInc.incident_id) ||
+                     (p.zone_id === newInc.zone_id && p.track_id === newInc.track_id && Math.abs(new Date(p.timestamp).getTime() - new Date(newInc.timestamp).getTime()) < 3500)
+            );
+            if (existingIdx >= 0) {
+              const updated = [...prev];
+              updated[existingIdx] = { ...updated[existingIdx], ...newInc };
+              return updated;
+            }
+            return [newInc, ...prev.slice(0, 99)];
+          });
         } catch (e) {
           console.error('Failed to parse incident SSE', e);
         }
       });
+
+      evtSource.onerror = (e) => {
+        console.warn('SSE stream notice / reconnecting', e);
+      };
     } catch (e) {
       console.warn('SSE not supported or connection failed', e);
     }
 
     return () => {
+      isSubscribed = false;
       if (evtSource) {
         evtSource.close();
       }
