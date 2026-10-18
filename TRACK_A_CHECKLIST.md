@@ -49,13 +49,13 @@ Derived Summary: [`logs/gpu_acceptance_summary.json`](logs/gpu_acceptance_summar
   - `yolov8n.fp32.plan`: 22,299,924 bytes (SHA-256: `6db83b9c05c01b3f007e90cb0789665fc144bf24ad9b7e8a5016c061a7c8036a`)
   - `yolo11n-pose.fp32.plan`: 18,899,516 bytes (SHA-256: `d066c37552488a952f18b502ae856ab3726b61ad3c5c75c7548a42775ba907a7`)
 - **Execution Performance:**
-  - 300 / 300 frames processed in 30.82s wall-clock (9.73 effective container FPS)
+  - 300 / 300 frames processed in 32.48s wall-clock (9.24 effective container FPS)
   - 300 / 300 HTTP ingestion deliveries to `/api/pipegen/ingest` (0 failed)
   - 9 SSE live events received on `/api/stream/events`
-  - 5 distinct safety incidents created + 4 periodic dwell updates triggered during worker intrusion into Restricted Zone 1 (Automated Cell 04)
+  - 6 distinct safety incidents created + 4 periodic dwell updates triggered during worker intrusion into Restricted Zone 1 (Automated Cell 04)
   - Total incident events emitted and received via SSE: 9 (0 dropped)
-  - Representative Incident: `incident_id: "inc_restricted_zone_1_1_..."`, `action: "created"`, `zone_id: "restricted_zone_1"`, `track_id: 1`, `contact_source: "pose_ankles"`, `risk_level: "CRITICAL"`, `dwell_time_seconds: 5.7`
-- **Output Video:** `assets/annotated_pipeline_run.mp4` (3,957,994 bytes, 300 frames, 1280x720 @ 30.0 FPS, playable)
+  - Representative Incident: `incident_id: "inc_restricted_zone_1_t1_1792311192538"`, `action: "updated"`, `update_seq: 4`, `zone_id: "restricted_zone_1"`, `track_id: 1`, `contact_source: "pose_ankles"`, `risk_level: "CRITICAL"`, `dwell_time_seconds: 12.09`
+- **Output Video:** `assets/annotated_pipeline_run.mp4` (3,969,844 bytes, 300 frames, 1280x720 @ 30.0 FPS, playable)
 - **Semantic Reconciliation Note:**
   Resolves the previously observed count discrepancy (7 incidents vs 6 SSE messages):
   1. *Subscription Startup Race:* `sse_listener_worker` previously started in a background thread without a ready handshake; the container was launched immediately, causing the first broadcast event to occur before the SSE HTTP connection was established and registered in `pipeline_mgr.subscribers`.
